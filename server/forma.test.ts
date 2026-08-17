@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("./db", () => ({ getDb: vi.fn() }));
 
 import { getDb } from "./db";
-import { formaRouter, isWorkspaceScoped, resolvePlanApplicationState, validateAIProposal } from "./forma";
+import { formaRouter, isWorkspaceScoped, resolveEmailDeliveryMode, resolvePlanApplicationState, validateAIProposal } from "./forma";
 
 const getDbMock = vi.mocked(getDb);
 
@@ -52,6 +52,13 @@ describe("Forma AI plan guardrails", () => {
     expect(resolvePlanApplicationState({ status: "proposed", appliedAt: null })).toBe("ready");
     expect(resolvePlanApplicationState({ status: "applied", appliedAt: new Date() })).toBe("idempotent");
     expect(resolvePlanApplicationState({ status: "rejected", appliedAt: null })).toBe("not_approvable");
+  });
+});
+
+describe("Forma notification delivery configuration", () => {
+  it("keeps email notifications queued without a provider and enables delivery only with a supplied key", () => {
+    expect(resolveEmailDeliveryMode("")).toBe("queued_without_provider");
+    expect(resolveEmailDeliveryMode("resend_test_key")).toBe("external_delivery_ready");
   });
 });
 

@@ -53,6 +53,10 @@ export function resolvePlanApplicationState(plan: { status: string; appliedAt: D
   return "ready" as const;
 }
 
+export function resolveEmailDeliveryMode(apiKey = process.env.RESEND_API_KEY) {
+  return apiKey?.trim() ? "external_delivery_ready" as const : "queued_without_provider" as const;
+}
+
 const prioritySchema = z.enum(["low", "medium", "high", "critical"]);
 const taskStatusSchema = z.enum(["todo", "in_progress", "blocked", "done"]);
 
@@ -319,7 +323,7 @@ export const formaRouter = router({
           const body = `“${input.title}” is due on ${input.dueAt.toLocaleDateString("en")}.`;
           await db.insert(notifications).values([
             { workspaceId: workspace.id, channel: "in_app", deliveryStatus: "queued", title: "Task deadline reminder", body, type: "task_deadline" },
-            { workspaceId: workspace.id, channel: "email", deliveryStatus: "queued", title: "Task deadline reminder", body, type: "task_deadline" },
+            { workspaceId: workspace.id, channel: "email", deliveryStatus: "queued", title: "Task deadline reminder", body: `${body} Delivery mode: ${resolveEmailDeliveryMode()}.`, type: "task_deadline" },
           ]);
         }
         return { success: true };
