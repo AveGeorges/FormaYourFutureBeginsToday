@@ -556,13 +556,14 @@ entries:
         notes: TypeScript clean
       - command: pnpm test
         result: passed
-        notes: 7 tests passed
+        notes: 8 tests passed
     tests_added:
       - fixed_ai_command_whitelist
       - ai_plan_idempotency_state
       - workspace_scope_policy
       - dream_to_goal_to_roadmap_to_action_to_task_to_calendar_to_time_entry
       - cross_workspace_denial_for_goal_task_calendar_and_time_flows
+      - email_delivery_provider_fallback
     migrations:
       created: true
       names:
@@ -574,7 +575,7 @@ entries:
     follow_up:
       - configure_automatic_notification_delivery_after_deployment
       - implement_external_calendar_provider_adapter
-      - push_initial_repository_commit_to_selected_github_remote
+      - configure_external_email_provider_if_transactional_delivery_is_required
     rollback_notes: "Use the first web project checkpoint if a rollback is required."
 ```
 
