@@ -1,0 +1,31 @@
+# Forma — Project TODO
+
+- [ ] Синхронизировать проект с подключённым GitHub-репозиторием и сохранить архитектурные документы в корне проекта.
+- [x] Зафиксировать название Forma, позиционирование и девиз в метаданных приложения и стартовом интерфейсе.
+- [x] Настроить защищённую модель workspace как строгую границу tenancy для всех пользовательских данных.
+- [x] Создать доменную схему и миграции для dreams, goals, roadmaps, milestones, actions, tasks, calendars, calendar events, time entries, boards, nodes, edges, AI plans и уведомлений.
+- [x] Реализовать серверные контракты, доступные только владельцу соответствующего workspace.
+- [x] Реализовать создание и просмотр dreams с визуальной конфигурацией и статусом.
+- [x] Реализовать goals, roadmaps, milestones и actions, связанные с parent dream.
+- [x] Реализовать задачи с приоритетом, статусом, оценкой, дедлайном, подзадачами и связью с action или milestone.
+- [x] Реализовать внутренние пользовательские typed calendars.
+- [x] Реализовать календарные события, проецирование задач в слоты, фильтры и изменение времени перетаскиванием.
+- [x] Реализовать Month, Week и Day views с breadcrumb и Back-навигацией для drill-down.
+- [x] Реализовать timer и ручные time entries с отображением фактического и оценочного времени.
+- [x] Реализовать Flow Map с узлами, зависимостями и переключением Map, Timeline, List.
+- [x] Реализовать AI proposal flow со строго фиксированными командами CreateGoal, CreateRoadmap, CreateTask, SuggestCalendarSlots и ProjectTaskToCalendar.
+- [x] Исключить применение AI-изменений без явного подтверждения пользователя и обеспечить идемпотентное применение утверждённого плана.
+- [ ] Реализовать in-app уведомления и подготовить интерфейс email-уведомлений для дедлайнов, напоминаний и AI approval prompts.
+- [x] Создать элегантный, responsive и доступный UI с premium-качеством взаимодействий.
+- [x] Добавить Vitest-тесты для tenancy boundary, AI confirmation flow и ключевых доменных операций.
+- [ ] Проверить приложение в браузере, обновить CHANGELOG_AI.md и сохранить checkpoint первой версии.
+- [x] Добавить в UI задач priority, дедлайн, выбор parent task/subtask и связи с action или milestone.
+- [x] Показать фактическое и оценочное время с progress indicator на уровне каждой задачи.
+- [x] Реализовать Flow Map на вычисляемых связях реальных доменных объектов вместо декоративных линий.
+- [x] Добавить Vitest-тесты workspace tenancy boundary и связности ключевых доменных объектов.
+- [x] Добавить Vitest-тесты доменной цепочки dream → goal → roadmap → milestone/action → task → calendar event → time entry.
+- [x] Добавить серверные тесты отказа cross-workspace access для create/update flows.
+- [x] Расширить domain-chain test явным dreams.create перед проверкой пути dream → goal → roadmap → milestone/action → task → calendar event → time entry.
+- [x] Добавить cross-workspace denial tests для updateStatus и связанных task/calendar/time create flows.
+- [x] Добавить cross-workspace denial tests для tasks.create с чужим action/milestone и time.addManual с чужим task.
+- [x] Добавить cross-workspace denial test для tasks.create с чужим milestoneId.

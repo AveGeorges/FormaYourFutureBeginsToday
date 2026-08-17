@@ -1,5 +1,20 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1786986983747,
+      "tag": "0000_military_patch",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1786987348775,
+      "tag": "0001_broad_exiles",
+      "breakpoints": true
+    }
+  ]
 }
