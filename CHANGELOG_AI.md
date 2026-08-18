@@ -1213,3 +1213,29 @@ fixed_ai_command_set:
     - block notification email when profile is missing, unverified or opted out
   rollback_notes: remove profile routes together with migration 20260818_0005 if self-hosted email profile is removed.
 ```
+
+## CHANGE_HISTORY_RESEND_PROVIDER_BOUNDARY
+
+```yaml
+- change_id: CHG-20260818-015
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: resend_http_provider_boundary
+  status: partial
+  change_type: feature
+  summary: added_resend_http_adapter_with_env_only_credentials_and_provider_message_id_contract
+  files_changed:
+    - backend/app/modules/notifications/infrastructure/resend.py
+  commands_run:
+    - command: ruff check app && mypy app
+      result: passed
+      notes: 68 source files pass strict type checking
+  risks:
+    - provider boundary is not yet invoked by notification worker and cannot send verification token until delivery orchestration is wired.
+  follow_up:
+    - implement verified UserProfile delivery gate and EmailDeliveryAttempt persistence
+    - send profile verification and product notification messages through the provider
+    - add mocked Resend success/error tests
+  rollback_notes: remove isolated provider module if choosing a different transactional email provider.
+```
