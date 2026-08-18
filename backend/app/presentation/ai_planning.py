@@ -19,9 +19,9 @@ from app.events.outbox import record_outbox_event
 from app.modules.ai_planning.domain import ALLOWED_AI_COMMANDS
 from app.modules.ai_planning.infrastructure.models import AIPlan
 from app.modules.identity.application.permissions import require_workspace_access
-from app.modules.planning.infrastructure.models import Dream, Goal, Roadmap
-from app.modules.scheduling.infrastructure.models import Calendar, CalendarEvent
-from app.modules.tasks.infrastructure.models import Task
+from app.modules.planning.application.commands import create_goal_from_ai, create_roadmap_from_ai
+from app.modules.scheduling.application.commands import project_task_to_calendar_from_ai
+from app.modules.tasks.application.commands import create_task_from_ai
 
 router = APIRouter()
 
@@ -61,106 +61,47 @@ async def _apply_command(
     args = command.arguments
     if command.command == "CreateGoal":
         dream_id = UUID(str(args["dream_id"]))
-        dream = await session.scalar(
-            select(Dream).where(Dream.id == dream_id, Dream.workspace_id == workspace_id)
-        )
-        if dream is None:
-            raise DomainError(
-                "DREAM_NOT_FOUND", "AI proposal references a dream outside this workspace."
-            )
-        goal = Goal(
-            id=uuid4(), workspace_id=workspace_id, dream_id=dream_id, title=str(args["title"])
-        )
-        session.add(goal)
-        record_outbox_event(
+        goal_id = await create_goal_from_ai(
             session,
-            EventEnvelope.create(
-                event_type="GoalCreated",
-                aggregate_id=goal.id,
-                workspace_id=workspace_id,
-                correlation_id=correlation_id,
-                payload={"dream_id": str(dream_id), "source": "ai_plan"},
-            ),
+            workspace_id=workspace_id,
+            dream_id=dream_id,
+            title=str(args["title"]),
+            correlation_id=correlation_id,
         )
-        return {"command": command.command, "id": str(goal.id)}
+        return {"command": command.command, "id": str(goal_id)}
 
     if command.command == "CreateRoadmap":
         goal_id = UUID(str(args["goal_id"]))
-        existing_goal = await session.scalar(
-            select(Goal).where(Goal.id == goal_id, Goal.workspace_id == workspace_id)
+        roadmap_id = await create_roadmap_from_ai(
+            session, workspace_id=workspace_id, goal_id=goal_id, title=str(args["title"])
         )
-        if existing_goal is None:
-            raise DomainError(
-                "GOAL_NOT_FOUND", "AI proposal references a goal outside this workspace."
-            )
-        roadmap = Roadmap(
-            id=uuid4(), workspace_id=workspace_id, goal_id=goal_id, title=str(args["title"])
-        )
-        session.add(roadmap)
-        return {"command": command.command, "id": str(roadmap.id)}
+        return {"command": command.command, "id": str(roadmap_id)}
 
     if command.command == "CreateTask":
-        task = Task(
-            id=uuid4(),
+        task_id = await create_task_from_ai(
+            session,
             workspace_id=workspace_id,
             title=str(args["title"]),
             priority=str(args.get("priority", "medium")),
             estimate_minutes=int(args.get("estimate_minutes", 0)),
+            correlation_id=correlation_id,
         )
-        session.add(task)
-        record_outbox_event(
-            session,
-            EventEnvelope.create(
-                event_type="TaskCreated",
-                aggregate_id=task.id,
-                workspace_id=workspace_id,
-                correlation_id=correlation_id,
-                payload={"source": "ai_plan"},
-            ),
-        )
-        return {"command": command.command, "id": str(task.id)}
+        return {"command": command.command, "id": str(task_id)}
 
     if command.command == "ProjectTaskToCalendar":
         task_id = UUID(str(args["task_id"]))
         calendar_id = UUID(str(args["calendar_id"]))
-        existing_task = await session.scalar(
-            select(Task).where(Task.id == task_id, Task.workspace_id == workspace_id)
-        )
-        calendar = await session.scalar(
-            select(Calendar).where(
-                Calendar.id == calendar_id, Calendar.workspace_id == workspace_id
-            )
-        )
-        if existing_task is None or calendar is None:
-            raise DomainError(
-                "SCHEDULING_REFERENCE_NOT_FOUND",
-                "AI proposal references an unavailable task or calendar.",
-            )
-        event = CalendarEvent(
-            id=uuid4(),
+        event_id = await project_task_to_calendar_from_ai(
+            session,
             workspace_id=workspace_id,
-            calendar_id=calendar_id,
             task_id=task_id,
-            title=str(args.get("title", task.title)),
+            calendar_id=calendar_id,
+            title=str(args["title"]) if args.get("title") else None,
             starts_at=datetime.fromisoformat(str(args["starts_at"])),
             ends_at=datetime.fromisoformat(str(args["ends_at"])),
+            correlation_id=correlation_id,
         )
-        if event.ends_at <= event.starts_at:
-            raise DomainError(
-                "INVALID_EVENT_WINDOW", "AI proposal contains an invalid calendar time range."
-            )
-        session.add(event)
-        record_outbox_event(
-            session,
-            EventEnvelope.create(
-                event_type="CalendarEventScheduled",
-                aggregate_id=event.id,
-                workspace_id=workspace_id,
-                correlation_id=correlation_id,
-                payload={"task_id": str(task_id), "source": "ai_plan"},
-            ),
-        )
-        return {"command": command.command, "id": str(event.id)}
+        return {"command": command.command, "id": str(event_id)}
 
     # SuggestCalendarSlots is advice only. Approval records acceptance but creates no domain state.
     return {"command": "SuggestCalendarSlots", "id": "suggestion-accepted"}

@@ -2243,3 +2243,45 @@ fixed_ai_command_set:
     - validate real Google OAuth import and Resend verification delivery under public HTTPS
   rollback_notes: restore direct router queries only together with removal of the corresponding public application port and its boundary regression test.
 ```
+
+## CHANGE_HISTORY_AI_COMMAND_PORT_DELEGATION
+
+```yaml
+- change_id: CHG-20260818-040
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: ai_command_port_delegation
+  status: partial
+  change_type: refactor
+  summary: moved_ai_approval_domain_writes_for_goal_roadmap_task_and_calendar_projection_from_the_fastapi_router_into_public_planning_tasks_and_scheduling_command_ports
+  reason: preserve_the_fixed_allow-list_and_explicit_approval_flow_while_removing_direct_foreign_context_orm_imports_from_the_ai_router
+  files_changed:
+    - backend/app/modules/planning/application/commands.py
+    - backend/app/modules/tasks/application/commands.py
+    - backend/app/modules/tasks/application/references.py
+    - backend/app/modules/scheduling/application/__init__.py
+    - backend/app/modules/scheduling/application/commands.py
+    - backend/app/presentation/ai_planning.py
+    - CHANGELOG_AI.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pytest -q tests/test_contracts.py tests/test_workers.py tests/test_module_boundaries.py && ruff check app tests && mypy app
+      result: passed
+      notes: 30 focused Python tests passed; Ruff and strict mypy clean across 79 source files
+  tests_added: []
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - BFF overview/dashboard aggregation still contains direct cross-context ORM reads and remains the outstanding portion of the broader boundary refactor.
+  follow_up:
+    - move BFF read aggregation onto public context query ports and add boundary regression coverage
+    - run full quality gate after completing the BFF portion
+  rollback_notes: restore router-level command writes only together with removal of the corresponding application ports; the AI allow-list and confirmation policy must remain unchanged.
+```
