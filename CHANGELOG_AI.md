@@ -1396,3 +1396,83 @@ fixed_ai_command_set:
     - validate deployment on a real Docker host
   rollback_notes: remove only isolated tests; no runtime schema or API rollback required.
 ```
+
+## CHANGE_HISTORY_RUSSIAN_ACTIVE_UI_COMPLETION
+
+```yaml
+- change_id: CHG-20260818-020
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: russian_active_ui_completion
+  status: done
+  change_type: feature
+  summary: translated_remaining_active_forma_dashboard_landing_dialog_ai_notification_and_error_fallback_copy_to_russian
+  files_changed:
+    - client/src/pages/Home.tsx
+    - client/src/components/DashboardLayout.tsx
+    - client/src/components/ErrorBoundary.tsx
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pnpm check && pnpm test && ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: TypeScript check, 2 Vitest tests and 12 Python tests passed; Ruff and strict mypy clean
+  tests_added: []
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - ComponentShowcase is a developer-only component gallery and remains outside the active end-user route set.
+    - server-provided free-form titles and user-authored content are intentionally not machine-translated.
+  follow_up:
+    - add Google OAuth callback/token exchange mocked integration tests
+    - implement provider-backed calendar synchronization states and cursor
+    - implement transaction-safe verification email delivery
+  rollback_notes: revert client copy and presentation maps only; API and persisted data contracts are unchanged.
+```
+
+## CHANGE_HISTORY_RUSSIAN_UI_AUDIT_AND_AI_LABELS
+
+```yaml
+- change_id: CHG-20260818-021
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: russian_active_ui_audit
+  status: done
+  change_type: bugfix
+  summary: replaced_user_visible_ai_command_codes_with_russian_labels_and_completed_active_ui_copy_audit
+  files_changed:
+    - client/src/pages/Home.tsx
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pnpm check
+      result: passed
+      notes: TypeScript check clean after AI command presentation mapping
+    - command: static audit of Home, DashboardLayout and ErrorBoundary
+      result: passed
+      notes: no known English active UI phrases or direct command code rendering remain
+  tests_added: []
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - fixed command identifiers remain English only inside client/server contracts, not user-facing rendering.
+  follow_up:
+    - add Google OAuth callback/token exchange mocked integration tests
+    - implement provider-backed calendar synchronization states and cursor
+    - implement transaction-safe verification email delivery
+  rollback_notes: remove only client presentation mapping; fixed AI command contracts remain unchanged.
+```
