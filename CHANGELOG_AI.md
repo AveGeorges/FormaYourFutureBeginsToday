@@ -1476,3 +1476,45 @@ fixed_ai_command_set:
     - implement transaction-safe verification email delivery
   rollback_notes: remove only client presentation mapping; fixed AI command contracts remain unchanged.
 ```
+
+## CHANGE_HISTORY_GOOGLE_OAUTH_CALLBACK_TESTS
+
+```yaml
+- change_id: CHG-20260818-022
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: google_oauth_callback_persistence_tests
+  status: done
+  change_type: test
+  summary: added_mocked_google_oauth_callback_integration_coverage_and_explicit_persistence_commit
+  files_changed:
+    - backend/app/presentation/integrations.py
+    - backend/tests/test_contracts.py
+    - TECHNICAL_STATUS_RU.md
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: 15 Python tests passed; Ruff and strict mypy clean across 69 source files
+  tests_added:
+    - valid signed callback state exchanges mocked authorization code and persists Fernet-encrypted access/refresh tokens
+    - invalid state fails before provider exchange
+    - provider exchange failure leaves connection pending and token columns empty
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - callback is covered with a mocked provider only; real Google credentials and redirect URI must be validated on a self-hosted server.
+  follow_up:
+    - implement provider-backed calendar synchronization with import, cursor and success/failed states
+    - validate real OAuth redirect flow using environment-only credentials
+    - implement transaction-safe verification email delivery
+  rollback_notes: remove explicit callback commit only together with the callback implementation; no schema rollback is needed.
+```

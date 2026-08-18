@@ -35,7 +35,7 @@ Backend находится в `backend/app` и является активным
 
 ### Проверки backend
 
-Полный изолированный REST scenario прошёл на временной SQLite базе: `workspace → dream → goal → roadmap → milestone → action → task → calendar event → time entry → BFF`. Это **не** заменяет production-проверку PostgreSQL/Redis/RabbitMQ в Docker Compose. Python quality gate проходит: Ruff, strict mypy и 10 pytest tests, включая worker dispatcher success, duplicate delivery, failure → reject without requeue, detached email orchestration и все delivery states (`delivered`, `failed`, `skipped_missing_profile`, `skipped_unverified`, `skipped_opt_out`).
+Полный изолированный REST scenario прошёл на временной SQLite базе: `workspace → dream → goal → roadmap → milestone → action → task → calendar event → time entry → BFF`. Это **не** заменяет production-проверку PostgreSQL/Redis/RabbitMQ в Docker Compose. Python quality gate проходит: Ruff, strict mypy и 15 pytest tests, включая worker dispatcher success, duplicate delivery, failure → reject without requeue, detached email orchestration, все delivery states (`delivered`, `failed`, `skipped_missing_profile`, `skipped_unverified`, `skipped_opt_out`) и mocked Google OAuth callback paths.
 
 ## 2. Frontend: что готово
 
@@ -58,7 +58,7 @@ React 19/Vite клиент использует TanStack Query и REST client `c
 
 | Интеграция | Состояние | Что уже есть | Что необходимо завершить до включения |
 |---|---|---|---|
-| Google Calendar | Partial | OAuth start URL, signed state, callback, code→token exchange, encrypted token storage и queued external link state | mocked callback tests, provider API import/export, cursor/success/failed sync state |
+| Google Calendar | Partial | OAuth start URL, signed state, callback, code→token exchange, encrypted token storage и queued external link state; callback фиксирует connected status и audit в одной transaction | provider API import/export, cursor/success/failed sync state |
 | Email | Partial | in-app notification, active post-commit Resend delivery, verified profile gate, opt-out gate, `EmailDeliveryAttempt`, mocked state tests | transaction-safe verification email flow, real server integration test, operational retry policy for failed provider requests |
 | RabbitMQ | Production topology готова | EventBus adapter, outbox publisher, worker, DLQ/retry config | запуск и проверка на Docker host |
 | Redis | Foundation | cache/lock adapter и configuration | calendar/AI coordination usage и lock/cache integration tests |

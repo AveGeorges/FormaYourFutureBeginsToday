@@ -158,6 +158,7 @@ async def google_calendar_callback(
         correlation_id="google-calendar-oauth-callback",
         details={"provider": connection.provider},
     )
+    await session.commit()
     return {"connection_id": str(connection.id), "status": connection.status}
 
 

@@ -45,6 +45,8 @@
 - [x] Заменить user-visible AI command IDs в proposal cards на русскоязычные labels, сохранив фиксированные backend codes только во внутренних контрактах.
 - [x] Выполнить финальный audit active routes/components на оставшиеся user-visible английские строки и уточнить статус русификации по результату.
 - [ ] Завершить Google Calendar OAuth callback/token exchange, encrypted token storage, provider adapter и worker sync flow с настройкой только через переменные окружения.
+- [x] Добавить mocked integration tests Google Calendar OAuth callback: signed state, code exchange, encrypted token persistence, отказ provider и недействительный state.
+- [x] Зафиксировать OAuth callback token/status/audit изменения в одной database transaction до возврата успешного ответа.
 - [x] Завершить email delivery adapter с конфигурируемым provider API key, delivery attempts и production runbook без хранения секретов в репозитории.
 - [ ] Подготовить исчерпывающий русскоязычный статус backend/frontend, deployment guide и integration setup guide для самостоятельного self-hosted запуска.
 - [ ] После каждого milestone обновлять CHANGELOG_AI.md с выполненными работами, проверками, рисками и следующими шагами.
