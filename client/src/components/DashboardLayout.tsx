@@ -28,11 +28,11 @@ import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Today", path: "/" },
-  { icon: Target, label: "Dreams", path: "/dreams" },
-  { icon: CalendarDays, label: "Calendar", path: "/calendar" },
-  { icon: Map, label: "Flow map", path: "/flow" },
-  { icon: Sparkles, label: "Assistant", path: "/assistant" },
+  { icon: LayoutDashboard, label: "Сегодня", path: "/" },
+  { icon: Target, label: "Мечты", path: "/dreams" },
+  { icon: CalendarDays, label: "Календарь", path: "/calendar" },
+  { icon: Map, label: "Карта связей", path: "/flow" },
+  { icon: Sparkles, label: "Ассистент", path: "/assistant" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -65,10 +65,10 @@ export default function DashboardLayout({
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="flex flex-col items-center gap-6">
             <h1 className="font-display text-3xl tracking-tight text-center">
-              Your Forma space is waiting.
+              Ваше пространство Forma ждёт вас.
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Sign in to keep your dreams, plans and time safely inside your personal workspace.
+              Войдите, чтобы хранить мечты, планы и время в личном рабочем пространстве.
             </p>
           </div>
           <Button
@@ -76,7 +76,7 @@ export default function DashboardLayout({
             size="lg"
             className="w-full shadow-lg hover:shadow-xl transition-all"
           >
-            Enter Forma
+            Открыть Forma
           </Button>
         </div>
       </div>
@@ -165,7 +165,7 @@ function DashboardLayoutContent({
               <button
                 onClick={toggleSidebar}
                 className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                aria-label="Toggle navigation"
+                aria-label="Переключить навигацию"
               >
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
@@ -227,7 +227,7 @@ function DashboardLayoutContent({
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
+                  <span>Выйти</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

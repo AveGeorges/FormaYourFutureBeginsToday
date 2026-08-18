@@ -41,6 +41,11 @@
 - [x] Исправить устаревшие числовые преобразования ID в React task/calendar/time формах на UUID-совместимую передачу REST идентификаторов.
 - [ ] Реализовать provider-backed calendar sync worker с success/failed статусами и sync cursor; текущий handler только ставит link в очередь.
 - [x] Добавить integration/e2e тесты `runner.dispatch_event` для notification, calendar link queueing, duplicate delivery и failure paths.
+- [ ] Перевести весь активный пользовательский интерфейс Forma на русский язык, включая onboarding, dashboard, календарь, формы, AI и сообщения состояний.
+- [ ] Завершить Google Calendar OAuth callback/token exchange, encrypted token storage, provider adapter и worker sync flow с настройкой только через переменные окружения.
+- [ ] Завершить email delivery adapter с конфигурируемым provider API key, delivery attempts и production runbook без хранения секретов в репозитории.
+- [ ] Подготовить исчерпывающий русскоязычный статус backend/frontend, deployment guide и integration setup guide для самостоятельного self-hosted запуска.
+- [ ] После каждого milestone обновлять CHANGELOG_AI.md с выполненными работами, проверками, рисками и следующими шагами.
 
 - [x] Синхронизировать проект с подключённым GitHub-репозиторием и сохранить архитектурные документы в корне проекта.
 - [x] Зафиксировать название Forma, позиционирование и девиз в метаданных приложения и стартовом интерфейсе.

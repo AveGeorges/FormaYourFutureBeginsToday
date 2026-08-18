@@ -975,3 +975,45 @@ fixed_ai_command_set:
     - implement external CalendarProvider OAuth callback/token encryption and sync adapter
   rollback_notes: revert process_message seam and worker tests together if consumer interface changes.
 ```
+
+## CHANGE_HISTORY_RUSSIAN_UI_AND_INTEGRATION_HANDOFF
+
+```yaml
+- change_id: CHG-20260818-007
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: russian_ui_and_production_handoff
+  status: partial
+  change_type: feature
+  summary: started_active_interface_russian_localization_and_documented_requirement_for_env_configured_integrations
+  files_changed:
+    - client/src/pages/Home.tsx
+    - client/src/components/DashboardLayout.tsx
+    - todo.md
+    - CHANGELOG_AI.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pnpm check
+      result: passed
+      notes: Russian UI first-pass compiles successfully
+    - command: browser visual review of onboarding
+      result: passed
+      notes: shell navigation and onboarding display in Russian without layout overflow
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - remaining dashboard dialogs and lower-page informational copy require continued Russian localization.
+    - Google Calendar is only an OAuth-start and queued-sync foundation; callback, encrypted tokens and provider operations remain unfinished.
+  follow_up:
+    - complete all active UI string localization
+    - implement complete Google callback/token encryption/provider sync and email adapter using only env configuration
+    - extend Russian self-hosted deployment and integration handoff
+  rollback_notes: revert the Russian UI string changes if product localization policy changes.
+```

@@ -52,11 +52,11 @@ type PlanCommand = {
 };
 
 const viewCopy: Record<ViewName, { eyebrow: string; title: string; description: string }> = {
-  today: { eyebrow: "Your living plan", title: "Shape today with intention.", description: "Every focused block is connected to something bigger." },
-  dreams: { eyebrow: "Your north stars", title: "Give the future a form.", description: "Dreams hold the emotional direction behind your plans." },
-  calendar: { eyebrow: "Time, made visible", title: "Protect time for what matters.", description: "Zoom from the month into the work that moves you forward." },
-  flow: { eyebrow: "Your plan in motion", title: "See the relationships.", description: "Map the path between intentions, goals and next actions." },
-  assistant: { eyebrow: "Forma intelligence", title: "Ask for a clearer path.", description: "Review every proposed change before Forma applies it." },
+  today: { eyebrow: "Ваш живой план", title: "Направьте сегодняшний день.", description: "Каждый фокус-блок связан с чем-то большим." },
+  dreams: { eyebrow: "Ваши ориентиры", title: "Придайте будущему форму.", description: "Мечты задают эмоциональное направление вашим планам." },
+  calendar: { eyebrow: "Время на виду", title: "Берегите время для важного.", description: "Переходите от месяца к работе, которая движет вас вперёд." },
+  flow: { eyebrow: "Ваш план в движении", title: "Видьте связи.", description: "Наблюдайте путь между намерениями, целями и следующими действиями." },
+  assistant: { eyebrow: "Интеллект Forma", title: "Попросите более ясный путь.", description: "Проверяйте каждое предложенное изменение до применения Forma." },
 };
 
 const commandTone: Record<PlanCommand["command"], string> = {
@@ -68,14 +68,14 @@ const commandTone: Record<PlanCommand["command"], string> = {
 };
 
 function friendlyDate(date: Date | string | null | undefined, options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" }) {
-  if (!date) return "No date";
-  return new Intl.DateTimeFormat("en", options).format(new Date(date));
+  if (!date) return "Без даты";
+  return new Intl.DateTimeFormat("ru-RU", options).format(new Date(date));
 }
 
 function minutes(value: number) {
-  if (!value) return "0m";
+  if (!value) return "0 мин";
   const hours = Math.floor(value / 60);
-  return hours ? `${hours}h ${value % 60 ? `${value % 60}m` : ""}`.trim() : `${value}m`;
+  return hours ? `${hours} ч ${value % 60 ? `${value % 60} мин` : ""}`.trim() : `${value} мин`;
 }
 
 function seconds(value: number) {
@@ -115,15 +115,15 @@ function Landing() {
     <div className="landing-shell min-h-screen overflow-hidden px-5 py-6 sm:px-10">
       <nav className="mx-auto flex max-w-7xl items-center justify-between py-3">
         <Brand />
-        <Button onClick={() => startLogin()} className="rounded-full bg-[#1b1a2b] px-5 text-white shadow-none hover:bg-[#2c2a46]">Enter Forma <ArrowRight className="ml-2 h-4 w-4" /></Button>
+        <Button onClick={() => startLogin()} className="rounded-full bg-[#1b1a2b] px-5 text-white shadow-none hover:bg-[#2c2a46]">Открыть Forma <ArrowRight className="ml-2 h-4 w-4" /></Button>
       </nav>
       <main className="mx-auto grid max-w-7xl gap-14 pt-20 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:pt-28">
         <section className="max-w-2xl">
-          <p className="eyebrow"><span /> Your future starts today</p>
-          <h1 className="mt-6 font-display text-5xl font-medium leading-[.98] tracking-[-0.055em] text-[#1b1a2b] sm:text-7xl">Become its <em>creator.</em></h1>
-          <p className="mt-7 max-w-xl text-lg leading-8 text-[#696577]">Forma turns dreams into visible goals, protected time and the focused work that makes progress real.</p>
-          <div className="mt-10 flex flex-wrap gap-3"><Button onClick={() => startLogin()} size="lg" className="rounded-full bg-[#7163f6] px-7 shadow-[0_14px_34px_rgba(113,99,246,.26)] hover:bg-[#6053e9]">Create your space <MoveRight className="ml-2 h-4 w-4" /></Button><Button variant="outline" size="lg" className="rounded-full border-[#dcd7f1] bg-white/60 px-7 text-[#3c3851]">See how it works</Button></div>
-          <div className="mt-14 flex items-center gap-7 text-sm text-[#777284]"><span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#7266f0]" /> Dreams to actions</span><span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#7266f0]" /> Your pace, your system</span></div>
+          <p className="eyebrow"><span /> Твоё будущее начинается сегодня</p>
+          <h1 className="mt-6 font-display text-5xl font-medium leading-[.98] tracking-[-.055em] text-[#1b1a2b] sm:text-7xl">Стань его <em>творцом.</em></h1>
+          <p className="mt-7 max-w-xl text-lg leading-8 text-[#696577]">Forma превращает мечты в видимые цели, защищённое время и сфокусированную работу, из которой рождается прогресс.</p>
+          <div className="mt-10 flex flex-wrap gap-3"><Button onClick={() => startLogin()} size="lg" className="rounded-full bg-[#7163f6] px-7 shadow-[0_14px_34px_rgba(113,99,246,.26)] hover:bg-[#6053e9]">Создать пространство <MoveRight className="ml-2 h-4 w-4" /></Button><Button variant="outline" size="lg" className="rounded-full border-[#dcd7f1] bg-white/60 px-7 text-[#3c3851]">Как это работает</Button></div>
+          <div className="mt-14 flex items-center gap-7 text-sm text-[#777284]"><span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#7266f0]" /> От мечты к действию</span><span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#7266f0]" /> Ваш темп, ваша система</span></div>
         </section>
         <section className="relative min-h-[490px]">
           <div className="absolute inset-x-4 top-4 h-[430px] rounded-[38px] bg-[#ffffffba] shadow-[0_26px_90px_rgba(61,53,107,.15)] backdrop-blur" />
@@ -255,34 +255,34 @@ function CalendarView({ events, calendars, refresh }: { events: any[]; calendars
   const navigate = (direction: number) => { const next = new Date(cursor); next.setDate(next.getDate() + (level === "month" ? direction * 31 : level === "week" ? direction * 7 : direction)); setCursor(next); };
   const drill = (nextLevel: "month" | "week" | "day", day: Date) => { setHistory(previous => [...previous, level]); setLevel(nextLevel); setCursor(day); };
   const goBack = () => { const previous = history[history.length - 1] ?? (level === "day" ? "week" : "month"); setHistory(items => items.slice(0, -1)); setLevel(previous); };
-  const heading = level === "month" ? friendlyDate(cursor, { month: "long", year: "numeric" }) : level === "week" ? `Week of ${friendlyDate(startOfWeek(cursor), { month: "short", day: "numeric" })}` : friendlyDate(cursor, { weekday: "long", month: "long", day: "numeric" });
+  const heading = level === "month" ? friendlyDate(cursor, { month: "long", year: "numeric" }) : level === "week" ? `Неделя с ${friendlyDate(startOfWeek(cursor), { month: "short", day: "numeric" })}` : friendlyDate(cursor, { weekday: "long", month: "long", day: "numeric" });
   const onDrop = (event: DragEvent<HTMLDivElement>, day: Date) => { event.preventDefault(); const eventId = Number(event.dataTransfer.getData("text/forma-event")); const current = events.find(item => item.id === eventId); if (!current || !eventId) return; const startsAt = new Date(day); const oldStart = new Date(current.startsAt); startsAt.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0); const endsAt = new Date(startsAt.getTime() + (new Date(current.endsAt).getTime() - oldStart.getTime())); reschedule.mutate({ eventId, startsAt, endsAt }); };
   return (
     <section className="surface-card overflow-hidden">
       <div className="flex flex-col gap-4 border-b border-[#efecf3] p-5 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={goBack} className="grid h-9 w-9 place-items-center rounded-full bg-[#f3f1fb] text-[#6c60ed] transition-transform hover:-translate-x-0.5" aria-label="Back"><ArrowLeft className="h-4 w-4" /></button>
-          <div><div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#9992a5]"><span>Calendar</span><ChevronRight className="h-3 w-3" /><span className="text-[#7568ee]">{level}</span></div><h2 className="mt-1 font-display text-2xl tracking-[-.04em] text-[#302c42]">{heading}</h2></div>
+          <button onClick={goBack} className="grid h-9 w-9 place-items-center rounded-full bg-[#f3f1fb] text-[#6c60ed] transition-transform hover:-translate-x-0.5" aria-label="Назад"><ArrowLeft className="h-4 w-4" /></button>
+          <div><div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#9992a5]"><span>Календарь</span><ChevronRight className="h-3 w-3" /><span className="text-[#7568ee]">{level === "month" ? "месяц" : level === "week" ? "неделя" : "день"}</span></div><h2 className="mt-1 font-display text-2xl tracking-[-.04em] text-[#302c42]">{heading}</h2></div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-full bg-[#f3f1f7] p-1">{(["month", "week", "day"] as const).map(item => <button key={item} onClick={() => setLevel(item)} className={cn("rounded-full px-3 py-1.5 text-xs capitalize transition-all", level === item ? "bg-white font-medium text-[#443b9a] shadow-sm" : "text-[#807a8b]")}>{item}</button>)}</div>
-          <select value={filter} onChange={event => setFilter(event.target.value)} className="h-8 rounded-full border border-[#e4e0eb] bg-white px-3 text-xs text-[#6e6879] outline-none"><option value="all">All calendars</option>{calendars.map(calendar => <option key={calendar.id} value={calendar.id}>{calendar.name}</option>)}</select>
+          <div className="flex rounded-full bg-[#f3f1f7] p-1">{(["month", "week", "day"] as const).map(item => <button key={item} onClick={() => setLevel(item)} className={cn("rounded-full px-3 py-1.5 text-xs capitalize transition-all", level === item ? "bg-white font-medium text-[#443b9a] shadow-sm" : "text-[#807a8b]")}>{item === "month" ? "Месяц" : item === "week" ? "Неделя" : "День"}</button>)}</div>
+          <select value={filter} onChange={event => setFilter(event.target.value)} className="h-8 rounded-full border border-[#e4e0eb] bg-white px-3 text-xs text-[#6e6879] outline-none"><option value="all">Все календари</option>{calendars.map(calendar => <option key={calendar.id} value={calendar.id}>{calendar.name}</option>)}</select>
           <button onClick={() => navigate(-1)} className="calendar-nav"><ChevronLeft className="h-4 w-4" /></button><button onClick={() => navigate(1)} className="calendar-nav"><ChevronRight className="h-4 w-4" /></button>
         </div>
       </div>
       <div className={cn("calendar-grid", level === "day" ? "grid-cols-1" : "grid-cols-7")}>
-        {level !== "day" && ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => <div key={day} className="calendar-weekday">{day}</div>)}
+        {level !== "day" && ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map(day => <div key={day} className="calendar-weekday">{day}</div>)}
         {interval.map(day => {
           const dayEvents = visibleEvents.filter(event => dateKey(event.startsAt) === dateKey(day));
           const isMuted = level === "month" && day.getMonth() !== cursor.getMonth();
           const isToday = dateKey(day) === dateKey(new Date());
           return <div key={day.toISOString()} onDragOver={event => event.preventDefault()} onDrop={event => onDrop(event, day)} className={cn("calendar-cell", level === "day" && "min-h-[400px]", isMuted && "opacity-40")}>
             <button onClick={() => level === "month" ? drill("week", day) : level === "week" ? drill("day", day) : undefined} className={cn("calendar-date", isToday && "calendar-date-today")}>{level === "day" ? friendlyDate(day, { weekday: "long", month: "long", day: "numeric" }) : day.getDate()}</button>
-            <div className="mt-2 space-y-1.5">{dayEvents.map(event => { const calendar = calendars.find(item => item.id === event.calendarId); return <div key={event.id} draggable onDragStart={drag => drag.dataTransfer.setData("text/forma-event", String(event.id))} className="calendar-event" style={{ "--event-color": calendar?.color ?? "#7163f6" } as React.CSSProperties}><GripVertical className="h-3 w-3 shrink-0 opacity-40" /><span className="truncate">{event.title}</span></div>; })}{level === "day" && !dayEvents.length && <p className="px-2 py-8 text-center text-sm text-[#aaa4b1]">Drop a scheduled block here.</p>}</div>
+            <div className="mt-2 space-y-1.5">{dayEvents.map(event => { const calendar = calendars.find(item => item.id === event.calendarId); return <div key={event.id} draggable onDragStart={drag => drag.dataTransfer.setData("text/forma-event", String(event.id))} className="calendar-event" style={{ "--event-color": calendar?.color ?? "#7163f6" } as React.CSSProperties}><GripVertical className="h-3 w-3 shrink-0 opacity-40" /><span className="truncate">{event.title}</span></div>; })}{level === "day" && !dayEvents.length && <p className="px-2 py-8 text-center text-sm text-[#aaa4b1]">Перетащите сюда запланированный блок.</p>}</div>
           </div>;
         })}
       </div>
-      <div className="flex items-center gap-5 border-t border-[#efecf3] px-5 py-3 text-[11px] text-[#938d9c]"><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#7163f6]" /> Drag a block to reschedule</span><span>Click a date to drill down</span></div>
+      <div className="flex items-center gap-5 border-t border-[#efecf3] px-5 py-3 text-[11px] text-[#938d9c]"><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#7163f6]" /> Перетащите блок, чтобы изменить время</span><span>Нажмите дату, чтобы перейти к деталям</span></div>
     </section>
   );
 }
@@ -322,7 +322,7 @@ function Dashboard() {
   const [location] = useLocation();
   const view = (location.slice(1).split("?")[0] || "today") as ViewName;
   const currentView = viewCopy[view] ? view : "today";
-  const [workspaceName, setWorkspaceName] = useState("My Forma space");
+  const [workspaceName, setWorkspaceName] = useState("Моё пространство Forma");
   const createWorkspace = formaApi.workspaces.create.useMutation({
     onSuccess: workspace => {
       window.localStorage.setItem("forma_workspace_id", workspace.id);
@@ -332,8 +332,8 @@ function Dashboard() {
   const overview = formaApi.overview.useQuery();
   const data = overview.data;
   const refresh = () => overview.refetch();
-  if (!window.localStorage.getItem("forma_workspace_id")) return <DashboardLayout><section className="mx-auto grid min-h-[70vh] max-w-lg place-items-center"><form onSubmit={event => { event.preventDefault(); createWorkspace.mutate({ name: workspaceName }); }} className="surface-card w-full p-8 text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[#f0eeff] text-[#7163f6]"><Sparkles className="h-5 w-5" /></span><p className="mt-5 font-display text-3xl tracking-[-.04em] text-[#302c42]">Begin with your space.</p><p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[#847e91]">Forma keeps every dream, goal and task inside your private workspace.</p><Input value={workspaceName} onChange={event => setWorkspaceName(event.target.value)} className="mt-6 rounded-xl" required /><Button disabled={createWorkspace.isPending} className="mt-3 w-full rounded-xl bg-[#7163f6] hover:bg-[#6053e9]">{createWorkspace.isPending ? "Creating…" : "Create my Forma space"}</Button></form></section></DashboardLayout>;
-  if (overview.isLoading || !data) return <DashboardLayout><div className="grid min-h-[70vh] place-items-center"><div className="flex items-center gap-3 text-sm text-[#777184]"><span className="h-3 w-3 animate-pulse rounded-full bg-[#7163f6]" /> Opening your Forma space…</div></div></DashboardLayout>;
+  if (!window.localStorage.getItem("forma_workspace_id")) return <DashboardLayout><section className="mx-auto grid min-h-[70vh] max-w-lg place-items-center"><form onSubmit={event => { event.preventDefault(); createWorkspace.mutate({ name: workspaceName }); }} className="surface-card w-full p-8 text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[#f0eeff] text-[#7163f6]"><Sparkles className="h-5 w-5" /></span><p className="mt-5 font-display text-3xl tracking-[-.04em] text-[#302c42]">Начните со своего пространства.</p><p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[#847e91]">Forma хранит каждую мечту, цель и задачу внутри вашего личного пространства.</p><Input value={workspaceName} onChange={event => setWorkspaceName(event.target.value)} className="mt-6 rounded-xl" required /><Button disabled={createWorkspace.isPending} className="mt-3 w-full rounded-xl bg-[#7163f6] hover:bg-[#6053e9]">{createWorkspace.isPending ? "Создаём…" : "Создать пространство Forma"}</Button></form></section></DashboardLayout>;
+  if (overview.isLoading || !data) return <DashboardLayout><div className="grid min-h-[70vh] place-items-center"><div className="flex items-center gap-3 text-sm text-[#777184]"><span className="h-3 w-3 animate-pulse rounded-full bg-[#7163f6]" /> Открываем пространство Forma…</div></div></DashboardLayout>;
   const completed = data.tasks.filter(task => task.status === "done").length;
   const estimate = data.tasks.reduce((total, task) => total + task.estimateMinutes, 0);
   const actual = data.timeEntries.reduce((total, entry) => total + Math.round(entry.durationSeconds / 60), 0);
