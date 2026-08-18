@@ -1239,3 +1239,35 @@ fixed_ai_command_set:
     - add mocked Resend success/error tests
   rollback_notes: remove isolated provider module if choosing a different transactional email provider.
 ```
+
+## CHANGE_HISTORY_VERIFIED_PROFILE_DELIVERY_GATE
+
+```yaml
+- change_id: CHG-20260818-016
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: verified_profile_external_delivery_gate
+  status: partial
+  change_type: feature
+  summary: added_email_delivery_worker_with_verified_profile_opt_out_and_persisted_resend_attempt_states
+  files_changed:
+    - backend/app/workers/email_delivery_worker.py
+  commands_run:
+    - command: ruff check app && mypy app
+      result: passed
+      notes: 69 source files pass strict type checking
+  delivery_states:
+    - delivered
+    - failed
+    - skipped_missing_profile
+    - skipped_unverified
+    - skipped_opt_out
+  risks:
+    - notification worker does not invoke this service yet; no external email is sent by active event processing.
+  follow_up:
+    - add mocked integration tests for all delivery states
+    - route eligible notification IDs to delivery worker without compromising receipt idempotency
+    - route verification token to a dedicated email template
+  rollback_notes: remove delivery worker service before removing EmailDeliveryAttempt migration.
+```
