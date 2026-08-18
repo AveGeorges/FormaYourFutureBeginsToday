@@ -28,7 +28,7 @@
 - [x] Настроить development/prod routing React → FastAPI `/api/v1`, CORS и browser smoke test с реальным REST response.
 - [x] Добавить development onboarding для создания workspace и передачи `X-User-Id` только в FastAPI development mode; production остаётся только через JWT bearer.
 - [x] Собрать React в FastAPI deployable: FastAPI обслуживает SPA и `/api/v1`, а Express runtime исключён из production path.
-- [ ] Провалидировать единый FastAPI SPA/API production image реальной Docker Compose build-проверкой в CI или на self-hosted Docker host.
+- [x] Провалидировать единый FastAPI SPA/API production image реальной Docker Compose build-проверкой в CI или на self-hosted Docker host.
 - [ ] Провалидировать self-hosted Docker Compose topology FastAPI API и RabbitMQ/Redis worker processes на машине с Docker перед production запуском.
 - [x] Добавить локальный mock self-hosted topology smoke suite: Compose/env contract, health-gated service dependencies, worker commands и simulated Google/Resend provider paths без Docker daemon.
 - [x] Интегрировать Redis в реальный calendar/AI coordination flow и покрыть lock/cache поведение тестами.

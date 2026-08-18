@@ -2156,3 +2156,42 @@ fixed_ai_command_set:
     - validate real Google OAuth import and Resend delivery on public HTTPS host
   rollback_notes: restore the prior frontend Nginx service and remove FORMA_WEB_STATIC_DIR only as one coordinated topology rollback; do not reintroduce Express into production.
 ```
+
+## CHANGE_HISTORY_FASTAPI_SPA_IMAGE_CI_VALIDATION
+
+```yaml
+- change_id: CHG-20260818-038
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: fastapi_spa_image_ci_build_validation
+  status: done
+  change_type: test
+  summary: validated_the_new_single_fastapi_spa_api_production_image_with_a_real_docker_compose_api_build_on_github_actions
+  reason: replace sandbox-only static and Dockerfile contract evidence with an actual Docker-capable runner build before treating the image build milestone as complete
+  files_changed:
+    - todo.md
+    - CHANGELOG_AI.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: GitHub Actions FastAPI SPA image smoke run 32134253240
+      result: passed
+      notes: `docker compose --env-file .env.production.example -f deploy/docker-compose.production.yml build api` completed successfully in 32 seconds
+  tests_added: []
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - the CI build validates the API image only; it does not start PostgreSQL, Redis, RabbitMQ, migration job or workers.
+    - full self-hosted Compose startup, live healthchecks, real provider credentials and public HTTPS validation remain required before production launch.
+  follow_up:
+    - run complete production Compose topology on a Docker-capable self-hosted host
+    - validate real Google OAuth redirect/import and Resend verification delivery with public HTTPS
+    - move remaining cross-context router ORM checks behind application ports
+  rollback_notes: no runtime rollback required; this is evidence for the existing image contract.
+```
