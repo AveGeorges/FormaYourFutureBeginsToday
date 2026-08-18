@@ -1102,3 +1102,29 @@ fixed_ai_command_set:
     - add end-to-end OAuth validation on a Docker host with real Google client credentials
   rollback_notes: revert callback router and provider exchange changes together if changing OAuth library/provider architecture.
 ```
+
+## CHANGE_HISTORY_EMAIL_DELIVERY_SCHEMA
+
+```yaml
+- change_id: CHG-20260818-011
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: email_delivery_attempt_persistence
+  status: partial
+  change_type: database
+  summary: added_email_delivery_attempt_model_and_postgresql_alembic_migration
+  files_changed:
+    - backend/app/modules/notifications/infrastructure/models.py
+    - backend/alembic/versions/20260818_0004_email_delivery_attempts.py
+  commands_run:
+    - command: ruff check app tests && mypy app && alembic upgrade head --sql
+      result: passed
+      notes: PostgreSQL migration chain generates email_delivery_attempts table and index
+  risks:
+    - no external provider send operation is wired to attempt records yet.
+  follow_up:
+    - implement Resend HTTP adapter, error mapping and persisted delivery result
+    - add integration tests for successful and failed external delivery
+  rollback_notes: downgrade revision 20260818_0004 before removing EmailDeliveryAttempt model.
+```

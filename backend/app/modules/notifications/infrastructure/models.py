@@ -23,6 +23,21 @@ class Notification(Base):
     )
 
 
+class EmailDeliveryAttempt(Base):
+    __tablename__ = "email_delivery_attempts"
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    notification_id: Mapped[UUID] = mapped_column(
+        ForeignKey("notifications.id", ondelete="CASCADE"), index=True
+    )
+    provider: Mapped[str] = mapped_column(String(48))
+    status: Mapped[str] = mapped_column(String(32), default="queued")
+    provider_message_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
 class AuditRecord(Base):
     __tablename__ = "audit_records"
     id: Mapped[UUID] = mapped_column(primary_key=True)
