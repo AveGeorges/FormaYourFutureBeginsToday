@@ -52,3 +52,15 @@ def test_write_side_routers_use_public_cross_context_application_ports() -> None
     assert "app.modules.tasks.application.references" in scheduling_router
     assert "app.modules.tasks.infrastructure.models" not in time_router
     assert "app.modules.tasks.application.references" in time_router
+
+
+def test_bff_router_uses_public_context_query_ports() -> None:
+    bff_router = (PRESENTATION_DIR / "bff.py").read_text(encoding="utf-8")
+
+    assert ".infrastructure.models" not in bff_router
+    assert "app.modules.identity.application.queries" in bff_router
+    assert "app.modules.planning.application.queries" in bff_router
+    assert "app.modules.tasks.application.queries" in bff_router
+    assert "app.modules.scheduling.application.queries" in bff_router
+    assert "app.modules.time_tracking.application.queries" in bff_router
+    assert "app.modules.notifications.application.queries" in bff_router

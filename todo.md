@@ -40,8 +40,8 @@
 - [x] Реализовать notification worker и calendar sync worker без заглушек: статус обработки, идемпотентность и тесты.
 - [x] Расширить audit trail на ключевые mutating commands workspaces, planning, tasks, calendar, time и AI approval.
 - [x] Вынести cross-context ORM checks из FastAPI write-side routers в application ports, чтобы checks Task/Planning не импортировали ORM-модели другого bounded context.
-- [ ] Вынести оставшиеся cross-context ORM usages из AI application flow и BFF read-model router в публичные application queries/ports bounded contexts.
-- [ ] Перевести BFF overview/dashboard aggregation с ORM-моделей других contexts на публичные query ports, сохранив REST response и Redis cache contract.
+- [x] Вынести оставшиеся cross-context ORM usages из AI application flow и BFF read-model router в публичные application queries/ports bounded contexts.
+- [x] Перевести BFF overview/dashboard aggregation с ORM-моделей других contexts на публичные query ports, сохранив REST response и Redis cache contract.
 - [x] Реализовать один внешний CalendarProvider OAuth adapter, encrypted token storage и import flow через ExternalEventLink.
 - [x] Подключить базовую email delivery adapter и delivery attempts для deadline/reminder/AI approval notifications.
 - [x] Добавить retry/backoff и dead-letter queue для RabbitMQ consumers с тестами повторной доставки.

@@ -2285,3 +2285,49 @@ fixed_ai_command_set:
     - run full quality gate after completing the BFF portion
   rollback_notes: restore router-level command writes only together with removal of the corresponding application ports; the AI allow-list and confirmation policy must remain unchanged.
 ```
+
+## CHANGE_HISTORY_BFF_QUERY_PORT_REFACTOR
+
+```yaml
+- change_id: CHG-20260818-041
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: bff_query_port_refactor
+  status: done
+  change_type: refactor
+  summary: moved_bff_overview_and_dashboard_reads_to_public_context_owned_query_ports_and_completed_the_remaining_cross_context_orm_router_refactor
+  reason: keep_FastAPI_presentation_handlers_as_orchestration_only_layers_and prevent_direct_imports_of_other_bounded_context_ORM_models
+  files_changed:
+    - backend/app/presentation/bff.py
+    - backend/app/modules/identity/application/queries.py
+    - backend/app/modules/planning/application/queries.py
+    - backend/app/modules/tasks/application/queries.py
+    - backend/app/modules/scheduling/application/queries.py
+    - backend/app/modules/time_tracking/application/queries.py
+    - backend/app/modules/notifications/application/queries.py
+    - backend/tests/test_module_boundaries.py
+    - todo.md
+    - CHANGELOG_AI.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pnpm check && pnpm test && cd backend && ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: TypeScript clean; 5 Vitest tests; Ruff and strict mypy clean; 35 Python tests passed
+  tests_added:
+    - BFF router is prohibited from importing infrastructure ORM models and required to use six public application query ports
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - overview counts now use the Planning projection length instead of independent count SQL, which is correct but may need a dedicated count port if workspace cardinality grows materially.
+  follow_up:
+    - run complete self-hosted Docker Compose topology on a Docker-capable server
+    - validate real Google OAuth redirect/import and Resend verification delivery under public HTTPS
+  rollback_notes: restore direct BFF ORM reads only together with removal of the public query ports and boundary regression test.
+```
