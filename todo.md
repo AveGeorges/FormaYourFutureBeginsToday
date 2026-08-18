@@ -10,7 +10,7 @@
 - [x] Создать server deployment guide: требования Ubuntu/Docker, первый запуск, обновление, бэкапы, observability и troubleshooting.
 - [x] Создать email provider runbook и draft Google Calendar OAuth runbook с явно указанными prerequisite implementation steps.
 
-- [ ] Сохранить текущий React-интерфейс как UI-reference и прекратить развитие Express/tRPC/Drizzle backend.
+- [x] Сохранить текущий React-интерфейс как UI-reference и прекратить развитие Express/tRPC/Drizzle backend.
 - [x] Создать Python/FastAPI/Pydantic/SQLAlchemy/Alembic backend со структурой DDD bounded contexts.
 - [x] Настроить PostgreSQL как единственный source of truth и миграции Alembic вместо MySQL-compatible Drizzle schema.
 - [x] Реализовать REST API `/api/v1` с логическими слоями API Gateway и web BFF.
@@ -21,7 +21,7 @@
 - [x] Создать normalised CalendarEvent и ExternalEventLink для будущей OAuth-интеграции внешнего календаря.
 - [x] Перевести React-клиент с tRPC на versioned REST/BFF contracts без изменения согласованных пользовательских сценариев.
 - [x] Настроить JSON logs, request/correlation IDs, audit trail, Ruff, mypy, pytest, pre-commit и contract tests.
-- [ ] Удалить либо архивировать заменённый Express/tRPC/Drizzle backend после подтверждения parity FastAPI implementation.
+- [x] Удалить либо архивировать заменённый Express/tRPC/Drizzle backend после подтверждения parity FastAPI implementation.
 - [x] Обновить CHANGELOG_AI.md и подтвердить соответствие итоговой архитектуры документации.
 - [x] Добавить production authentication adapter для FastAPI Gateway/BFF вместо development-only trusted `X-User-Id` header.
 - [x] Перевести все frontend tRPC-вызовы на REST/BFF client и добавить browser-проверку полного вертикального сценария.

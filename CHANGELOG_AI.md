@@ -890,3 +890,52 @@ fixed_ai_command_set:
     - implement provider-backed calendar sync and email delivery adapter
   rollback_notes: revert CHG-20260818-004 files together if the managed development proxy is no longer required.
 ```
+
+## CHANGE_HISTORY_LEGACY_ARCHIVE
+
+```yaml
+- change_id: CHG-20260818-005
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: ARCH-001_legacy_retirement
+  status: done
+  change_type: refactor
+  summary: archived_express_trpc_drizzle_mysql_scaffold_outside_active_runtime_and_dependency_graph
+  files_changed:
+    - server/_legacy/
+    - server/_core/index.ts
+    - shared/types.ts
+    - package.json
+    - pnpm-lock.yaml
+    - tsconfig.json
+    - vitest.config.ts
+    - todo.md
+  contracts_changed:
+    api:
+      - removed_active_/api/trpc_mount
+    events: []
+    database:
+      - retired_legacy_mysql_drizzle_schema_from_active_source_tree
+    ai_tools: []
+  commands_run:
+    - command: pnpm check && pnpm test
+      result: passed
+      notes: active TypeScript clean; 2 active proxy regression tests passed
+    - command: ruff check app tests scripts && mypy app && pytest -q
+      result: passed
+      notes: 6 Python tests passed
+    - command: alembic upgrade head --sql
+      result: passed
+      notes: PostgreSQL migration chain unchanged and valid
+  migrations:
+    created: false
+    names: []
+  breaking_change: true
+  risks:
+    - legacy MySQL data is not migrated automatically; self-hosted deployment starts from the FastAPI/Alembic PostgreSQL schema.
+  follow_up:
+    - validate production Compose on a Docker-capable target host
+    - complete external OAuth/provider integrations before enabling them
+  rollback_notes: restore the prior checkpoint if legacy scaffold access is required for comparison.
+```

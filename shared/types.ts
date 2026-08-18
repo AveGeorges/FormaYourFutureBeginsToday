@@ -1,7 +1,3 @@
-/**
- * Unified type exports
- * Import shared types from this single entry point.
- */
+/** Active shared contracts for the FastAPI REST/BFF frontend shell. */
 
-export type * from "../drizzle/schema";
 export * from "./_core/errors";
