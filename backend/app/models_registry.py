@@ -4,10 +4,16 @@ from app.core.idempotency import IdempotencyRecord  # noqa: F401
 from app.events.outbox import OutboxEvent  # noqa: F401
 from app.modules.ai_planning.infrastructure.models import AIPlan  # noqa: F401
 from app.modules.boards.infrastructure.models import Board, BoardEdge, BoardNode  # noqa: F401
-from app.modules.identity.infrastructure.models import Workspace, WorkspaceMembership  # noqa: F401
+from app.modules.identity.infrastructure.models import (  # noqa: F401
+    EmailVerificationToken,
+    UserProfile,
+    Workspace,
+    WorkspaceMembership,
+)
 from app.modules.integrations.infrastructure.models import CalendarConnection  # noqa: F401
 from app.modules.notifications.infrastructure.models import (  # noqa: F401
     AuditRecord,
+    EmailDeliveryAttempt,
     Notification,
     WorkerReceipt,
 )
