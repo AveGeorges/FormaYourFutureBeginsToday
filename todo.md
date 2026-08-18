@@ -30,6 +30,7 @@
 - [x] Собрать React в FastAPI deployable: FastAPI обслуживает SPA и `/api/v1`, а Express runtime исключён из production path.
 - [x] Провалидировать единый FastAPI SPA/API production image реальной Docker Compose build-проверкой в CI или на self-hosted Docker host.
 - [ ] Провалидировать self-hosted Docker Compose topology FastAPI API и RabbitMQ/Redis worker processes на машине с Docker перед production запуском.
+- [ ] Возобновить внешний production smoke-check после готовности Docker-capable self-hosted host и public HTTPS endpoint для Google OAuth redirect URI.
 - [x] Добавить локальный mock self-hosted topology smoke suite: Compose/env contract, health-gated service dependencies, worker commands и simulated Google/Resend provider paths без Docker daemon.
 - [x] Интегрировать Redis в реальный calendar/AI coordination flow и покрыть lock/cache поведение тестами.
 - [x] Добавить post-commit Redis invalidation BFF overview cache после AI mutating approval, не затрагивая PostgreSQL source-of-truth.
