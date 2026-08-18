@@ -1,6 +1,6 @@
 # Forma — самостоятельное развёртывание на сервере
 
-Этот документ описывает запуск **Forma** на собственном сервере. Итоговая topology состоит из React SPA за Nginx, FastAPI API, PostgreSQL, Redis, RabbitMQ, outbox publisher и event workers. Внешние порты базы, Redis и RabbitMQ не публикуются: они доступны только внутри Docker network.
+Этот документ описывает запуск **Forma** на собственном сервере. Итоговая topology состоит из единого FastAPI deployable, который обслуживает React SPA и `/api/v1`, PostgreSQL, Redis, RabbitMQ, outbox publisher и event workers. Внешние порты базы, Redis и RabbitMQ не публикуются: они доступны только внутри Docker network.
 
 > **Архитектурное правило:** PostgreSQL является источником доменной истины. Redis хранит только cache/locks, RabbitMQ используется как транспорт `EventBus`, а каждое асинхронное доменное событие сначала записывается в PostgreSQL outbox.
 
@@ -72,7 +72,7 @@ docker compose --env-file .env -f deploy/docker-compose.production.yml up -d --b
 docker compose --env-file .env -f deploy/docker-compose.production.yml ps
 ```
 
-Проверьте API и frontend локально на сервере:
+Проверьте FastAPI API и React SPA локально на сервере:
 
 ```bash
 curl http://127.0.0.1:8080/health
@@ -80,7 +80,7 @@ docker compose --env-file .env -f deploy/docker-compose.production.yml logs --ta
 docker compose --env-file .env -f deploy/docker-compose.production.yml logs --tail=100 worker-outbox worker-events
 ```
 
-Ожидаемый ответ health endpoint: `ok`. Сервис `frontend` доступен только по `127.0.0.1:8080`; это преднамеренно, чтобы публичный доступ проходил исключительно через TLS reverse proxy.
+Ожидаемый ответ health endpoint: `ok`. Сервис `api` доступен только по `127.0.0.1:8080`; это преднамеренно, чтобы публичный доступ проходил исключительно через TLS reverse proxy. Собранный React SPA находится в том же production image и отдаётся FastAPI с SPA fallback, а `/api/v1` остаётся versioned REST/BFF boundary.
 
 ## 4. Домен и TLS
 
@@ -113,7 +113,7 @@ curl -I https://forma.example.com/api/v1/health
 
 В development режиме React способен создать временный local workspace через `X-User-Id`. В **production** FastAPI принимает только Bearer JWT. До публичного запуска подключите ваш JWT issuer или OAuth provider к production auth adapter; не включайте development header в production.
 
-Фронтенд и API уже разделены: React обращается только к `/api/v1` через Nginx/BFF. После подключения issuer добавьте access token в client session и убедитесь, что `JWT_SECRET` или public-key verification соответствует выбранному issuer.
+Frontend и API используют один public origin: React обращается только к `/api/v1` через FastAPI/BFF boundary. После подключения issuer добавьте access token в client session и убедитесь, что `JWT_SECRET` или public-key verification соответствует выбранному issuer.
 
 ## 6. Google Calendar OAuth
 
@@ -172,7 +172,7 @@ docker compose --env-file .env -f deploy/docker-compose.production.yml stop api 
 |---|---|---|
 | API не стартует | `docker compose ... logs api` | Проверьте `migrate`, `JWT_SECRET`, PostgreSQL URL и healthcheck базы |
 | Worker не обрабатывает события | `docker compose ... logs worker-outbox worker-events` | Проверьте RabbitMQ, outbox rows, retry/DLQ и worker receipts |
-| UI отвечает 502 | `curl 127.0.0.1:8080/health`, `systemctl status caddy` | Убедитесь, что `frontend` запущен и Caddy проксирует на 127.0.0.1:8080 |
+| UI отвечает 502 | `curl 127.0.0.1:8080/health`, `systemctl status caddy` | Убедитесь, что `api` запущен, healthy и Caddy проксирует на 127.0.0.1:8080 |
 | OAuth ошибка | API logs + redirect URI | Сверьте домен, HTTPS и callback URL в Google Cloud Console |
 | Нет verification email | Logs `worker-outbox worker-events` | Проверьте ключ, подтверждённый sender domain, `FORMA_WEB_APP_BASE_URL`, HTTPS доступность domain и worker receipt `verification-email-worker` |
 

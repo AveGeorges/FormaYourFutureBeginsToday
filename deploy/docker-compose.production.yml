@@ -59,6 +59,7 @@ services:
       FORMA_RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
       FORMA_CORS_ORIGINS: ${FORMA_PUBLIC_ORIGIN}
       FORMA_WEB_APP_BASE_URL: ${FORMA_WEB_APP_BASE_URL}
+      FORMA_WEB_STATIC_DIR: /app/web
       JWT_SECRET: ${JWT_SECRET}
       FORMA_GOOGLE_CALENDAR_CLIENT_ID: ${GOOGLE_CALENDAR_CLIENT_ID}
       FORMA_GOOGLE_CALENDAR_CLIENT_SECRET: ${GOOGLE_CALENDAR_CLIENT_SECRET}
@@ -75,7 +76,8 @@ services:
 
   api:
     build:
-      context: ../backend
+      context: ..
+      dockerfile: deploy/fastapi-spa.Dockerfile
     restart: unless-stopped
     env_file: ../.env
     environment: *forma_backend_environment
@@ -92,6 +94,8 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+    ports:
+      - "127.0.0.1:8080:8000"
     networks: [internal]
 
   worker-outbox:
@@ -120,18 +124,6 @@ services:
         condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
-    networks: [internal]
-
-  frontend:
-    build:
-      context: ..
-      dockerfile: deploy/frontend.Dockerfile
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_healthy
-    ports:
-      - "127.0.0.1:8080:80"
     networks: [internal]
 
 networks:

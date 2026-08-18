@@ -56,7 +56,6 @@ def test_production_compose_has_isolated_stateful_topology_and_worker_gating() -
         "api:",
         "worker-outbox:",
         "worker-events:",
-        "frontend:",
     ):
         assert service_name in compose
 
@@ -65,11 +64,13 @@ def test_production_compose_has_isolated_stateful_topology_and_worker_gating() -
     assert 'command: ["python", "-m", "app.workers.outbox_publisher"]' in compose
     assert 'command: ["python", "-m", "app.workers.runner"]' in compose
     assert 'command: ["uvicorn", "app.main:app"' in compose
-    assert 'ports:\n      - "127.0.0.1:8080:80"' in compose
+    assert 'ports:\n      - "127.0.0.1:8080:8000"' in compose
     assert "networks: [internal]" in compose
     assert "3306" not in compose
     assert "6379:" not in compose
     assert "5672:" not in compose
+    assert "frontend:" not in compose
+    assert "nginx" not in compose.lower()
 
     assert """depends_on:
       postgres:
@@ -90,10 +91,9 @@ def test_production_compose_has_isolated_stateful_topology_and_worker_gating() -
       rabbitmq:
         condition: service_healthy
 """ in _service_block(compose, worker_name)
-    assert """depends_on:
-      api:
-        condition: service_healthy
-""" in _service_block(compose, "frontend")
+    assert """ports:
+      - "127.0.0.1:8080:8000"
+""" in _service_block(compose, "api")
 
 
 def test_production_env_and_compose_mapping_cover_signed_email_and_external_providers() -> None:
@@ -125,8 +125,24 @@ def test_production_env_and_compose_mapping_cover_signed_email_and_external_prov
     for mapping in expected_backend_mappings:
         assert mapping in compose
 
+    assert "FORMA_WEB_STATIC_DIR: /app/web" in compose
     assert "express" not in compose.lower()
     assert "trpc" not in compose.lower()
+
+    deployable_dockerfile = _read_project_file("deploy/fastapi-spa.Dockerfile")
+    assert "FROM node:22-alpine AS frontend-builder" in deployable_dockerfile
+    assert "RUN pnpm exec vite build" in deployable_dockerfile
+    assert "COPY --from=frontend-builder /build/dist/public /app/web" in deployable_dockerfile
+    assert "CMD [\"uvicorn\", \"app.main:app\"" in deployable_dockerfile
+    assert deployable_dockerfile.index("COPY backend ./") < deployable_dockerfile.index(
+        "RUN pip install ."
+    )
+
+    image_smoke_workflow = _read_project_file(
+        ".github/workflows/fastapi-spa-image-smoke.yml"
+    )
+    assert "docker compose --env-file .env.production.example" in image_smoke_workflow
+    assert "build api" in image_smoke_workflow
 
 
 @pytest.mark.asyncio

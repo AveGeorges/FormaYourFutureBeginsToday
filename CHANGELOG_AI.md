@@ -2100,3 +2100,59 @@ fixed_ai_command_set:
     - implement the separate FastAPI SPA-serving deployment path only if this remains the selected production contract
   rollback_notes: remove this test addendum together with the specific assertions only if the corresponding Compose or provider contracts are deliberately replaced.
 ```
+
+## CHANGE_HISTORY_FASTAPI_SPA_DEPLOYABLE
+
+```yaml
+- change_id: CHG-20260818-037
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: fastapi_served_spa_production_deployable
+  status: partial
+  change_type: architecture
+  summary: replaced_the_active_nginx_frontend_service_with_a_single_fastapi_production_image_that_builds_react_and_serves_spa_assets_fallback_and_versioned_api_routes
+  reason: complete_the_option_A requirement that the Python/FastAPI deployable, rather than an Express runtime or separate frontend gateway, serves both the React application and `/api/v1`
+  files_changed:
+    - backend/app/core/config.py
+    - backend/app/main.py
+    - backend/tests/test_contracts.py
+    - backend/tests/test_deployment_contract.py
+    - deploy/fastapi-spa.Dockerfile
+    - deploy/docker-compose.production.yml
+    - .dockerignore
+    - .github/workflows/fastapi-spa-image-smoke.yml
+    - SERVER_DEPLOYMENT.md
+    - TECHNICAL_STATUS_RU.md
+    - todo.md
+  contracts_changed:
+    api:
+      - FastAPI conditionally serves Vite assets and SPA fallback from FORMA_WEB_STATIC_DIR after `/api/v1` routes
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pnpm exec vite build
+      result: passed
+      notes: Vite produced dist/public/index.html and hashed SPA assets; temporary artifact was removed after validation
+    - command: pnpm check && pnpm test && cd backend && ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: TypeScript clean; 5 Vitest tests; Ruff and strict mypy clean; 32 Python tests passed
+  tests_added:
+    - FastAPI serves a static asset, applies SPA fallback for client routes and preserves API 404 semantics
+    - Compose asserts single API public port, FORMA_WEB_STATIC_DIR mapping and no active frontend/Nginx runtime
+    - Dockerfile order asserts backend source is present before pip installation and copies Vite artifact into FastAPI runtime
+    - GitHub Actions workflow contract asserts Docker Compose builds the API image with secret-free example environment values
+  migrations:
+    created: false
+    names: []
+  breaking_change: true
+  risks:
+    - the separate Nginx frontend container and its configuration were intentionally removed from active production topology.
+    - Docker is unavailable in the build sandbox, so actual container image build/run validation is pending the newly added GitHub Actions workflow or a self-hosted Docker host.
+  follow_up:
+    - observe and record the first GitHub Actions Docker Compose API image build
+    - run full Compose startup and runtime health checks on a target self-hosted Docker server
+    - validate real Google OAuth import and Resend delivery on public HTTPS host
+  rollback_notes: restore the prior frontend Nginx service and remove FORMA_WEB_STATIC_DIR only as one coordinated topology rollback; do not reintroduce Express into production.
+```

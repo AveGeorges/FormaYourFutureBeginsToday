@@ -1,0 +1,22 @@
+name: FastAPI SPA image smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-fastapi-spa-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build the single FastAPI SPA/API production image
+        run: >-
+          docker compose --env-file .env.production.example
+          -f deploy/docker-compose.production.yml build api

@@ -68,9 +68,9 @@ React 19/Vite клиент использует TanStack Query и REST client `c
 
 ## 4. Deployment готовность
 
-В репозитории подготовлены `deploy/docker-compose.production.yml`, PostgreSQL 16, Redis 7, RabbitMQ 3.13, migrate job, FastAPI API, outbox worker, events worker, Nginx frontend gateway, Caddy TLS template, `.env.production.example`, backup script и `SERVER_DEPLOYMENT.md`.
+В репозитории подготовлены `deploy/docker-compose.production.yml`, PostgreSQL 16, Redis 7, RabbitMQ 3.13, migrate job, FastAPI SPA/API deployable, outbox worker, events worker, Caddy TLS template, `.env.production.example`, backup script и `SERVER_DEPLOYMENT.md`.
 
-Production topology разделяет static React build и FastAPI API: Nginx обслуживает SPA и проксирует `/api/v1`, а Caddy на хосте завершает TLS. Старый Express/tRPC/Drizzle/MySQL scaffold архивирован в `server/_legacy` и не входит в active runtime, TypeScript/Vitest quality gate или self-hosted production topology.
+Production topology собирает React через Vite в multi-stage image и копирует static artifact в FastAPI runtime; FastAPI обслуживает SPA fallback и `/api/v1`, а Caddy на хосте завершает TLS. Старый Express/tRPC/Drizzle/MySQL scaffold архивирован в `server/_legacy` и не входит в active runtime, TypeScript/Vitest quality gate или self-hosted production topology.
 
 ## 5. Ближайшие обязательные шаги
 

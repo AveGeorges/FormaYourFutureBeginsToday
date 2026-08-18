@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     resend_from_email: str = ""
     web_app_base_url: str = ""
+    web_static_dir: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:

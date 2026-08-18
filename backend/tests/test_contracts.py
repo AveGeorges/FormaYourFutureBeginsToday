@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -39,6 +40,34 @@ def test_health_contract() -> None:
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "service": "forma-api"}
+
+
+def test_fastapi_serves_spa_assets_and_falls_back_without_intercepting_api_routes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    assets_dir = tmp_path / "assets"
+    assets_dir.mkdir()
+    (tmp_path / "index.html").write_text("<main>Forma SPA</main>", encoding="utf-8")
+    (assets_dir / "forma.js").write_text("console.log('forma');", encoding="utf-8")
+    monkeypatch.setenv("FORMA_WEB_STATIC_DIR", str(tmp_path))
+    get_settings.cache_clear()
+
+    try:
+        client = TestClient(create_app())
+
+        asset_response = client.get("/assets/forma.js")
+        fallback_response = client.get("/calendar/2026-08-18")
+        api_response = client.get("/api/v1/not-a-route")
+
+        assert asset_response.status_code == 200
+        assert asset_response.text == "console.log('forma');"
+        assert asset_response.headers["cache-control"] == "public, max-age=31536000, immutable"
+        assert fallback_response.status_code == 200
+        assert fallback_response.text == "<main>Forma SPA</main>"
+        assert api_response.status_code == 404
+        assert api_response.json() == {"detail": "Not Found"}
+    finally:
+        get_settings.cache_clear()
 
 
 def test_rest_contract_exposes_required_vertical_slice_routes() -> None:
