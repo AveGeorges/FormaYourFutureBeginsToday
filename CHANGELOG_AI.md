@@ -1567,3 +1567,126 @@ fixed_ai_command_set:
     - implement transaction-safe verification email delivery
   rollback_notes: revert CalendarSyncRequested outbox routing and provider worker import together; existing internal CalendarEvent records remain valid.
 ```
+
+## CHANGE_HISTORY_CALENDAR_MULTI_SCALE_NAVIGATION
+
+```yaml
+- change_id: CHG-20260818-024
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: calendar_year_to_day_navigation
+  status: done
+  change_type: feature
+  summary: extended_calendar_client_from_month_week_day_to_year_quarter_month_week_day_with_drill_down_breadcrumb_and_back_history
+  files_changed:
+    - client/src/pages/Home.tsx
+    - TECHNICAL_STATUS_RU.md
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pnpm check && pnpm test
+      result: passed
+      notes: TypeScript check clean; 2 Vitest tests passed
+  tests_added: []
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - year and quarter cards aggregate events already present in the BFF dashboard read model; large multi-year histories may need server-side aggregation in a later iteration.
+  follow_up:
+    - integrate Redis locks/cache into calendar and AI coordination flow
+    - validate self-hosted Docker topology and real Google OAuth credentials
+    - implement transaction-safe verification email delivery
+  rollback_notes: revert CalendarView presentation state only; REST/BFF and persisted calendar records are unchanged.
+```
+
+## CHANGE_HISTORY_CALENDAR_BREADCRUMB_TEST_COVERAGE
+
+```yaml
+- change_id: CHG-20260818-025
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: calendar_context_breadcrumb_and_tests
+  status: done
+  change_type: test
+  summary: added_clickable_year_to_day_context_breadcrumb_and_executable_unit_coverage_for_scale_navigation_and_back_logic
+  files_changed:
+    - client/src/pages/Home.tsx
+    - client/src/lib/calendarNavigation.ts
+    - client/src/lib/calendarNavigation.test.ts
+    - vitest.config.ts
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pnpm check && pnpm test
+      result: passed
+      notes: TypeScript check clean; 4 Vitest tests including calendar navigation helpers passed
+  tests_added:
+    - Year/Quarter/Month/Week/Day Russian breadcrumb context
+    - scale-specific cursor navigation and Back level transitions
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - component-level click testing requires a browser or DOM harness in a later UI test expansion; pure state/navigation contract is covered now.
+  follow_up:
+    - integrate Redis locks/cache into calendar and AI coordination flow
+    - validate self-hosted Docker topology and real Google OAuth credentials
+    - implement transaction-safe verification email delivery
+  rollback_notes: revert CalendarView and pure client helper only; no API or schema contract changes.
+```
+
+## CHANGE_HISTORY_CALENDAR_COMPONENT_VALIDATION
+
+```yaml
+- change_id: CHG-20260818-026
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: calendar_component_level_validation
+  status: done
+  change_type: test
+  summary: added_jsdom_calendarview_interaction_test_and_expanded_vitest_discovery_to_execute_client_tsx_tests
+  files_changed:
+    - client/src/pages/Home.calendar.test.tsx
+    - client/src/pages/Home.tsx
+    - vitest.config.ts
+    - package.json
+    - pnpm-lock.yaml
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pnpm check && pnpm test
+      result: passed
+      notes: TypeScript check clean; 5 Vitest tests passed across server, pure navigation helpers and jsdom CalendarView interaction
+  tests_added:
+    - CalendarView Year → Quarter → Month → Week → Day drill-down
+    - CalendarView Back navigation and direct click on a breadcrumb segment
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - jsdom validates component interaction but does not replace visual validation on a populated production calendar.
+  follow_up:
+    - integrate Redis locks/cache into calendar and AI coordination flow
+    - validate self-hosted Docker topology and real Google OAuth credentials
+    - implement transaction-safe verification email delivery
+  rollback_notes: remove test-only jsdom dependencies and CalendarView exports if component test coverage is intentionally withdrawn.
+```

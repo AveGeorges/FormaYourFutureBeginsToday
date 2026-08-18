@@ -36,7 +36,10 @@
 - [x] Реализовать один внешний CalendarProvider OAuth adapter, encrypted token storage и import flow через ExternalEventLink.
 - [x] Подключить базовую email delivery adapter и delivery attempts для deadline/reminder/AI approval notifications.
 - [x] Добавить retry/backoff и dead-letter queue для RabbitMQ consumers с тестами повторной доставки.
-- [ ] Довести календарный client drill-down до Year → Quarter → Month → Week → Day с breadcrumb и Back через REST/BFF data.
+- [x] Довести календарный client drill-down до Year → Quarter → Month → Week → Day с breadcrumb и Back через REST/BFF data.
+- [x] Доработать CalendarView до полного контекстного breadcrumb path Year → Quarter → Month → Week → Day с переходами по сегментам.
+- [x] Добавить проверяемую validation multi-level calendar navigation: Year/Quarter/Month/Week/Day, Back и breadcrumb path.
+- [x] Добавить component-level или browser-level test CalendarView для Year → Quarter → Month → Week → Day drill-down, Back и кликабельных breadcrumb segments.
 - [x] Завершить Google Calendar OAuth callback/token exchange и encrypted token storage перед production-включением OAuth runbook.
 - [x] Исправить устаревшие числовые преобразования ID в React task/calendar/time формах на UUID-совместимую передачу REST идентификаторов.
 - [x] Реализовать provider-backed calendar sync worker с success/failed статусами и sync cursor; текущий handler только ставит link в очередь.

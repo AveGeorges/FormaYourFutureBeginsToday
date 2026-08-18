@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { startLogin } from "@/const";
+import { calendarBackLevel, calendarBreadcrumb, calendarLevelLabel, moveCalendarCursor, type CalendarLevel } from "@/lib/calendarNavigation";
 import { formaApi } from "@/lib/formaApi";
 import { cn } from "@/lib/utils";
 import {
@@ -39,7 +40,7 @@ import {
   TimerReset,
   WandSparkles,
 } from "lucide-react";
-import { useMemo, useState, type DragEvent, type FormEvent } from "react";
+import React, { useMemo, useState, type DragEvent, type FormEvent } from "react";
 import { useLocation } from "wouter";
 
 type ViewName = "today" | "dreams" | "calendar" | "flow" | "assistant";
@@ -284,51 +285,28 @@ function GoalStudio({ dreams, goals, roadmaps, milestones, actions, refresh }: {
   </section>;
 }
 
-function CalendarView({ events, calendars, refresh }: { events: any[]; calendars: any[]; refresh: () => void }) {
+export function CalendarView({ events, calendars, refresh }: { events: any[]; calendars: any[]; refresh: () => void }) {
   const [cursor, setCursor] = useState(() => new Date());
-  const [level, setLevel] = useState<"month" | "week" | "day">("month");
-  const [history, setHistory] = useState<Array<"month" | "week" | "day">>([]);
+  const [level, setLevel] = useState<CalendarLevel>("month");
+  const [history, setHistory] = useState<CalendarLevel[]>([]);
   const [filter, setFilter] = useState("all");
   const reschedule = formaApi.calendars.reschedule.useMutation({ onSuccess: refresh });
+  const levelLabel = calendarLevelLabel;
+  const overviewPeriods = useMemo(() => level === "year" ? [0, 3, 6, 9].map(month => new Date(cursor.getFullYear(), month, 1)) : level === "quarter" ? [0, 1, 2].map(offset => new Date(cursor.getFullYear(), Math.floor(cursor.getMonth() / 3) * 3 + offset, 1)) : [], [cursor, level]);
   const interval = useMemo(() => {
     if (level === "day") return [new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())];
     if (level === "week") return Array.from({ length: 7 }, (_, index) => { const day = startOfWeek(cursor); day.setDate(day.getDate() + index); return day; });
-    const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1); const gridStart = startOfWeek(first); return Array.from({ length: 35 }, (_, index) => { const day = new Date(gridStart); day.setDate(gridStart.getDate() + index); return day; });
+    const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1); const gridStart = startOfWeek(first); return Array.from({ length: 35 }, (_, index) => { const day = new Date(gridStart); day.setDate(day.getDate() + index); return day; });
   }, [cursor, level]);
   const visibleEvents = events.filter(event => filter === "all" || String(event.calendarId) === filter);
-  const navigate = (direction: number) => { const next = new Date(cursor); next.setDate(next.getDate() + (level === "month" ? direction * 31 : level === "week" ? direction * 7 : direction)); setCursor(next); };
-  const drill = (nextLevel: "month" | "week" | "day", day: Date) => { setHistory(previous => [...previous, level]); setLevel(nextLevel); setCursor(day); };
-  const goBack = () => { const previous = history[history.length - 1] ?? (level === "day" ? "week" : "month"); setHistory(items => items.slice(0, -1)); setLevel(previous); };
-  const heading = level === "month" ? friendlyDate(cursor, { month: "long", year: "numeric" }) : level === "week" ? `Неделя с ${friendlyDate(startOfWeek(cursor), { month: "short", day: "numeric" })}` : friendlyDate(cursor, { weekday: "long", month: "long", day: "numeric" });
+  const navigate = (direction: number) => setCursor(moveCalendarCursor(cursor, level, direction));
+  const drill = (nextLevel: CalendarLevel, date: Date) => { setHistory(previous => [...previous, level]); setLevel(nextLevel); setCursor(date); };
+  const goBack = () => { const previous = history[history.length - 1] ?? calendarBackLevel(level); setHistory(items => items.slice(0, -1)); setLevel(previous); };
+  const breadcrumb = calendarBreadcrumb(cursor, level);
+  const heading = breadcrumb.map((segment, index) => <span key={segment.level}><button type="button" onClick={() => { setLevel(segment.level); setCursor(segment.date); setHistory([]); }} className="transition-colors hover:text-[#6259d8]">{segment.label}</button>{index < breadcrumb.length - 1 && <span className="px-1 text-[#afa8bd]">›</span>}</span>);
   const onDrop = (event: DragEvent<HTMLDivElement>, day: Date) => { event.preventDefault(); const eventId = Number(event.dataTransfer.getData("text/forma-event")); const current = events.find(item => item.id === eventId); if (!current || !eventId) return; const startsAt = new Date(day); const oldStart = new Date(current.startsAt); startsAt.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0); const endsAt = new Date(startsAt.getTime() + (new Date(current.endsAt).getTime() - oldStart.getTime())); reschedule.mutate({ eventId, startsAt, endsAt }); };
-  return (
-    <section className="surface-card overflow-hidden">
-      <div className="flex flex-col gap-4 border-b border-[#efecf3] p-5 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={goBack} className="grid h-9 w-9 place-items-center rounded-full bg-[#f3f1fb] text-[#6c60ed] transition-transform hover:-translate-x-0.5" aria-label="Назад"><ArrowLeft className="h-4 w-4" /></button>
-          <div><div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#9992a5]"><span>Календарь</span><ChevronRight className="h-3 w-3" /><span className="text-[#7568ee]">{level === "month" ? "месяц" : level === "week" ? "неделя" : "день"}</span></div><h2 className="mt-1 font-display text-2xl tracking-[-.04em] text-[#302c42]">{heading}</h2></div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-full bg-[#f3f1f7] p-1">{(["month", "week", "day"] as const).map(item => <button key={item} onClick={() => setLevel(item)} className={cn("rounded-full px-3 py-1.5 text-xs capitalize transition-all", level === item ? "bg-white font-medium text-[#443b9a] shadow-sm" : "text-[#807a8b]")}>{item === "month" ? "Месяц" : item === "week" ? "Неделя" : "День"}</button>)}</div>
-          <select value={filter} onChange={event => setFilter(event.target.value)} className="h-8 rounded-full border border-[#e4e0eb] bg-white px-3 text-xs text-[#6e6879] outline-none"><option value="all">Все календари</option>{calendars.map(calendar => <option key={calendar.id} value={calendar.id}>{calendar.name}</option>)}</select>
-          <button onClick={() => navigate(-1)} className="calendar-nav"><ChevronLeft className="h-4 w-4" /></button><button onClick={() => navigate(1)} className="calendar-nav"><ChevronRight className="h-4 w-4" /></button>
-        </div>
-      </div>
-      <div className={cn("calendar-grid", level === "day" ? "grid-cols-1" : "grid-cols-7")}>
-        {level !== "day" && ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map(day => <div key={day} className="calendar-weekday">{day}</div>)}
-        {interval.map(day => {
-          const dayEvents = visibleEvents.filter(event => dateKey(event.startsAt) === dateKey(day));
-          const isMuted = level === "month" && day.getMonth() !== cursor.getMonth();
-          const isToday = dateKey(day) === dateKey(new Date());
-          return <div key={day.toISOString()} onDragOver={event => event.preventDefault()} onDrop={event => onDrop(event, day)} className={cn("calendar-cell", level === "day" && "min-h-[400px]", isMuted && "opacity-40")}>
-            <button onClick={() => level === "month" ? drill("week", day) : level === "week" ? drill("day", day) : undefined} className={cn("calendar-date", isToday && "calendar-date-today")}>{level === "day" ? friendlyDate(day, { weekday: "long", month: "long", day: "numeric" }) : day.getDate()}</button>
-            <div className="mt-2 space-y-1.5">{dayEvents.map(event => { const calendar = calendars.find(item => item.id === event.calendarId); return <div key={event.id} draggable onDragStart={drag => drag.dataTransfer.setData("text/forma-event", String(event.id))} className="calendar-event" style={{ "--event-color": calendar?.color ?? "#7163f6" } as React.CSSProperties}><GripVertical className="h-3 w-3 shrink-0 opacity-40" /><span className="truncate">{event.title}</span></div>; })}{level === "day" && !dayEvents.length && <p className="px-2 py-8 text-center text-sm text-[#aaa4b1]">Перетащите сюда запланированный блок.</p>}</div>
-          </div>;
-        })}
-      </div>
-      <div className="flex items-center gap-5 border-t border-[#efecf3] px-5 py-3 text-[11px] text-[#938d9c]"><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#7163f6]" /> Перетащите блок, чтобы изменить время</span><span>Нажмите дату, чтобы перейти к деталям</span></div>
-    </section>
-  );
+  const eventsInPeriod = (start: Date, months: number) => { const end = new Date(start.getFullYear(), start.getMonth() + months, 1); return visibleEvents.filter(event => { const date = new Date(event.startsAt); return date >= start && date < end; }).length; };
+  return <section className="surface-card overflow-hidden"><div className="flex flex-col gap-4 border-b border-[#efecf3] p-5 xl:flex-row xl:items-center xl:justify-between"><div className="flex items-center gap-3"><button onClick={goBack} disabled={level === "year" && !history.length} className="grid h-9 w-9 place-items-center rounded-full bg-[#f3f1fb] text-[#6c60ed] transition-transform hover:-translate-x-0.5 disabled:cursor-not-allowed disabled:opacity-40" aria-label="Назад"><ArrowLeft className="h-4 w-4" /></button><div><div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#9992a5]"><span>Календарь</span><ChevronRight className="h-3 w-3" /><span className="text-[#7568ee]">{levelLabel[level]}</span></div><h2 className="mt-1 font-display text-2xl tracking-[-.04em] text-[#302c42]">{heading}</h2></div></div><div className="flex flex-wrap items-center gap-2"><div className="flex rounded-full bg-[#f3f1f7] p-1">{(["year", "quarter", "month", "week", "day"] as const).map(item => <button key={item} onClick={() => setLevel(item)} className={cn("rounded-full px-3 py-1.5 text-xs capitalize transition-all", level === item ? "bg-white font-medium text-[#443b9a] shadow-sm" : "text-[#807a8b]")}>{levelLabel[item]}</button>)}</div><select value={filter} onChange={event => setFilter(event.target.value)} className="h-8 rounded-full border border-[#e4e0eb] bg-white px-3 text-xs text-[#6e6879] outline-none"><option value="all">Все календари</option>{calendars.map(calendar => <option key={calendar.id} value={calendar.id}>{calendar.name}</option>)}</select><button onClick={() => navigate(-1)} className="calendar-nav"><ChevronLeft className="h-4 w-4" /></button><button onClick={() => navigate(1)} className="calendar-nav"><ChevronRight className="h-4 w-4" /></button></div></div>{(level === "year" || level === "quarter") ? <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">{overviewPeriods.map(period => { const isYear = level === "year"; const count = eventsInPeriod(period, isYear ? 3 : 1); const title = isYear ? `${Math.floor(period.getMonth() / 3) + 1} квартал` : friendlyDate(period, { month: "long" }); return <button key={period.toISOString()} onClick={() => drill(isYear ? "quarter" : "month", period)} className="rounded-2xl border border-[#ece8f2] bg-[#fcfbfe] p-5 text-left transition-colors hover:border-[#cfc8ff] hover:bg-[#f7f5ff]"><p className="text-xs font-semibold uppercase tracking-[.12em] text-[#7568ee]">{title}</p><p className="mt-2 font-display text-2xl text-[#343044]">{count}</p><p className="mt-1 text-xs text-[#8b8597]">{count === 1 ? "событие" : "событий"}</p><p className="mt-4 text-xs font-medium text-[#6259d8]">Открыть детали →</p></button>; })}</div> : <><div className={cn("calendar-grid", level === "day" ? "grid-cols-1" : "grid-cols-7")}>{level !== "day" && ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map(day => <div key={day} className="calendar-weekday">{day}</div>)}{interval.map(day => { const dayEvents = visibleEvents.filter(event => dateKey(event.startsAt) === dateKey(day)); const isMuted = level === "month" && day.getMonth() !== cursor.getMonth(); const isToday = dateKey(day) === dateKey(new Date()); return <div key={day.toISOString()} onDragOver={event => event.preventDefault()} onDrop={event => onDrop(event, day)} className={cn("calendar-cell", level === "day" && "min-h-[400px]", isMuted && "opacity-40")}><button onClick={() => level === "month" ? drill("week", day) : level === "week" ? drill("day", day) : undefined} className={cn("calendar-date", isToday && "calendar-date-today")}>{level === "day" ? friendlyDate(day, { weekday: "long", month: "long", day: "numeric" }) : day.getDate()}</button><div className="mt-2 space-y-1.5">{dayEvents.map(event => { const calendar = calendars.find(item => item.id === event.calendarId); return <div key={event.id} draggable onDragStart={drag => drag.dataTransfer.setData("text/forma-event", String(event.id))} className="calendar-event" style={{ "--event-color": calendar?.color ?? "#7163f6" } as React.CSSProperties}><GripVertical className="h-3 w-3 shrink-0 opacity-40" /><span className="truncate">{event.title}</span></div>; })}{level === "day" && !dayEvents.length && <p className="px-2 py-8 text-center text-sm text-[#aaa4b1]">Перетащите сюда запланированный блок.</p>}</div></div>; })}</div><div className="flex items-center gap-5 border-t border-[#efecf3] px-5 py-3 text-[11px] text-[#938d9c]"><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#7163f6]" /> Перетащите блок, чтобы изменить время</span><span>Нажмите дату, чтобы перейти к деталям</span></div></>}</section>;
 }
 
 function FlowMap({ dreams, goals, roadmaps, milestones, actions, tasks, calendars }: { dreams: any[]; goals: any[]; roadmaps: any[]; milestones: any[]; actions: any[]; tasks: any[]; calendars: any[] }) {

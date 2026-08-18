@@ -48,7 +48,7 @@ React 19/Vite клиент использует TanStack Query и REST client `c
 | Dreams | Создание мечты с визуальной конфигурацией и отображение карточек |
 | Goals/Roadmap | Создание цели, roadmap, milestones и actions, визуальное отображение связи |
 | Tasks | Создание задач/подзадач, priority, deadline, parent/action/milestone links, completion, timer |
-| Calendar | Internal calendars, event creation, filters, month/week/day, drill-down и back navigation, drag reschedule |
+| Calendar | Internal calendars, event creation, filters, Year/Quarter/Month/Week/Day drill-down, breadcrumb, Back navigation и drag reschedule на детальных уровнях |
 | Flow Map | Map/Timeline/List проекция реальных связей dream → goal → task |
 | AI | Предложение планов и явное подтверждение перед apply |
 
