@@ -11,7 +11,7 @@ project_codename: planning-platform
 product_type: web-first personal planning platform
 primary_language: ru
 current_iteration: 1
-current_status: first_working_iteration_ready_for_review
+current_status: architecture_rebuild_option_A_in_progress
 source_of_truth:
   implementation_guide: MANUS_1_6_IMPLEMENTATION_GUIDE.md
   architecture_blueprint: planning-platform-blueprint.md
@@ -23,18 +23,20 @@ update_policy: append_only_for_history; update_current_state_block_after_each_mi
 
 ```yaml
 iteration: 1
-milestone: M5_ai_and_hardening
-status: ready_for_review
-last_updated: 2026-08-17
+milestone: ARCH-001_option_A_fastapi_rebuild
+status: partial
+last_updated: 2026-08-18
 implemented: partial
 active_vertical_slice: Dream -> Goal -> Roadmap -> Action -> Task -> CalendarEvent -> TimeEntry
-current_priority: review_first_working_iteration_and_configure_external_delivery
-blocking_issues: []
+current_priority: complete_rest_frontend_parity_and_retire_express_trpc_backend
+blocking_issues:
+  - current_react_client_still_uses_temporary_trpc_ui_reference_adapter
 known_risks:
   - email_notification_records_are_queued_but_no_external_email_provider_is_configured
   - deadline_and_calendar_reminders_require_deployed_heartbeat_setup_before_automatic_delivery
   - external_calendar_oauth_provider_is_not_implemented_in_this_iteration
   - Flow_Map_uses_real_domain_links_but_persisted_custom_board_edges_remain_a_future_iteration
+  - FastAPI_worker_topology_requires_persistent_or_always_on_runtime_for_production
 ```
 
 ## PRODUCT_CONTEXT
@@ -125,7 +127,6 @@ allowed_commands:
   - CreateTask
   - SuggestCalendarSlots
   - ProjectTaskToCalendar
-  - CreateBoardLayout
 forbidden_in_iteration_1:
   - autonomous_delete_calendar_event
   - arbitrary_sql
@@ -258,7 +259,7 @@ envelope:
 iterations:
   1:
     name: usable_vertical_slice
-    status: planned
+    status: architecture_rebuild_in_progress
     scope:
       - auth_and_workspace
       - planning_domain
@@ -642,3 +643,123 @@ acceptance:
   - typecheck_and_tests_pass
   - external_notification_delivery_is_clearly_configured_or_explicitly_deferred
 ```
+
+## ARCHITECTURE_CONFLICT_2026_08_18
+
+```yaml
+conflict_id: ARCH-001
+status: resolved_option_A_rebuild_in_place
+severity: high
+source_of_truth: MANUS_1_6_IMPLEMENTATION_GUIDE.md
+required_architecture:
+  backend: Python/FastAPI/Pydantic/SQLAlchemy/Alembic
+  database: PostgreSQL
+  cache: Redis
+  broker: RabbitMQ
+  async: EventBus abstraction + Transactional Outbox
+  workers: notification_and_calendar_sync_worker
+actual_implementation:
+  backend: Express/tRPC/TypeScript
+  database: MySQL-compatible Drizzle schema
+  cache: not_implemented
+  broker: not_implemented
+  outbox: not_implemented
+  workers: not_implemented
+reason_for_deviation: managed_web_scaffold_contract_was_followed_instead_of_the_mandated_architecture
+impact:
+  - current_backend_is_not_compliant_with_the_accepted_architecture
+  - current_tests_validate_express_trpc_not_fastapi_contracts
+  - migration_requires_rebuild_or_parallel_backend_port
+options:
+  - id: OPTION-A
+    title: rebuild_backend_in_place
+    risk: high
+  - id: OPTION-B
+    title: parallel_backend_migration
+    risk: medium_high
+  - id: OPTION-C
+    title: explicitly_approve_temporary_scaffold_exception
+    risk: high_architectural_debt
+user_selected_option: OPTION-A
+implementation_status: FastAPI_PostgreSQL_Redis_RabbitMQ_outbox_workers_and_REST_BFF_foundation_created; frontend_parity_pending
+fixed_ai_command_set:
+  - CreateGoal
+  - CreateRoadmap
+  - CreateTask
+  - SuggestCalendarSlots
+  - ProjectTaskToCalendar
+```
+
+## CHANGE_HISTORY_ARCH-001
+
+```yaml
+- change_id: CHG-20260818-001
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: architecture_conflict_detected
+  status: awaiting_user_confirmation
+  change_type: architecture
+  summary: recorded_express_trpc_scaffold_vs_python_fastapi_requirement_conflict
+  files_changed:
+    - CHANGELOG_AI.md
+  breaking_change: pending_decision
+  follow_up:
+    - obtain_user_choice_before_backend_architecture_changes
+  - change_id: CHG-20260818-002
+    created_at: 2026-08-18T00:00:00Z
+    agent: Manus
+    iteration: 1
+    milestone: ARCH-001_option_A
+    status: partial
+    change_type: architecture
+    summary: rebuilt_backend_foundation_on_fastapi_postgresql_redis_rabbitmq_outbox_and_workers
+    files_changed:
+      - backend/
+      - docker-compose.yml
+      - ARCHITECTURE_REBUILD.md
+      - todo.md
+      - CHANGELOG_AI.md
+    contracts_changed:
+      api:
+        - /api/v1 REST gateway
+        - /api/v1/bff workspace dashboard
+      events:
+        - transactional outbox envelope
+      database:
+        - 20260818_0001_initial_schema
+        - 20260818_0002_ai_boards_notifications
+        - 20260818_0003_worker_receipts
+      ai_tools:
+        - CreateGoal
+        - CreateRoadmap
+        - CreateTask
+        - SuggestCalendarSlots
+        - ProjectTaskToCalendar
+    commands_run:
+      - command: pytest -q
+        result: passed
+        notes: 4 FastAPI contract tests passed
+      - command: ruff check app tests
+        result: passed
+        notes: Python lint passed
+      - command: mypy app
+        result: passed
+        notes: strict typing passed
+      - command: alembic upgrade head --sql
+        result: passed
+        notes: PostgreSQL migration SQL generated
+    breaking_change: true
+    risks:
+      - React transport conversion from tRPC to REST/BFF remains incomplete
+      - persistent worker hosting remains required before production deployment
+    follow_up:
+      - complete React REST/BFF conversion
+      - run migration against a real PostgreSQL instance
+      - archive Express/tRPC/Drizzle after parity verification
+```
+
+## ARCHITECTURE_CONFLICT_TODO
+
+- [x] Resolve ARCH-001 with explicit user confirmation before further backend architecture work; user selected OPTION-A.
+- [x] Resolve whether CreateBoardLayout is allowed; the fixed five-command AI set is authoritative.

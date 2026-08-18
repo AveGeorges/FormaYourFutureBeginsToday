@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: forma
+      POSTGRES_USER: forma
+      POSTGRES_PASSWORD: forma
+    ports: ["5432:5432"]
+    volumes: ["forma_postgres:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forma -d forma"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: forma
+      RABBITMQ_DEFAULT_PASS: forma
+    ports: ["5672:5672", "15672:15672"]
+  api:
+    build: ./backend
+    environment:
+      FORMA_DATABASE_URL: postgresql+psycopg://forma:forma@postgres:5432/forma
+      FORMA_REDIS_URL: redis://redis:6379/0
+      FORMA_RABBITMQ_URL: amqp://forma:forma@rabbitmq:5672/
+    ports: ["8000:8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+  worker-outbox:
+    build: ./backend
+    command: python -m app.workers.outbox_publisher
+    environment:
+      FORMA_DATABASE_URL: postgresql+psycopg://forma:forma@postgres:5432/forma
+      FORMA_REDIS_URL: redis://redis:6379/0
+      FORMA_RABBITMQ_URL: amqp://forma:forma@rabbitmq:5672/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+  worker-events:
+    build: ./backend
+    command: python -m app.workers.runner
+    environment:
+      FORMA_DATABASE_URL: postgresql+psycopg://forma:forma@postgres:5432/forma
+      FORMA_REDIS_URL: redis://redis:6379/0
+      FORMA_RABBITMQ_URL: amqp://forma:forma@rabbitmq:5672/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+
+volumes:
+  forma_postgres:

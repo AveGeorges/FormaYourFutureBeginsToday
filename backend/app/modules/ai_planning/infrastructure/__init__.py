@@ -1,0 +1,1 @@
+"""AI proposal persistence adapters."""
