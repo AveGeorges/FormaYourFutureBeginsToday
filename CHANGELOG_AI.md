@@ -1690,3 +1690,159 @@ fixed_ai_command_set:
     - implement transaction-safe verification email delivery
   rollback_notes: remove test-only jsdom dependencies and CalendarView exports if component test coverage is intentionally withdrawn.
 ```
+
+## CHANGE_HISTORY_CALENDAR_REDIS_LOCK
+
+```yaml
+- change_id: CHG-20260818-027
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: calendar_sync_redis_coordination_lock
+  status: partial
+  change_type: feature
+  summary: wrapped_provider_calendar_import_upsert_and_cursor_commit_in_existing_workspace_scoped_redis_lock
+  files_changed:
+    - backend/app/workers/calendar_sync_worker.py
+    - backend/tests/test_workers.py
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pytest -q tests/test_workers.py && ruff check app tests && mypy app
+      result: passed
+      notes: 7 worker tests passed; Ruff and strict mypy clean
+  tests_added:
+    - provider import acquires one workspace lock and duplicate receipt returns before attempting a second lock
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - cache hit/miss and invalidation coverage for calendar or AI-adjacent reads remains open.
+  follow_up:
+    - add Redis cache behavior test for calendar/AI-adjacent read model
+    - validate self-hosted Docker topology and real Google OAuth credentials
+    - implement transaction-safe verification email delivery
+  rollback_notes: remove the worker lock wrapper only; normalized event storage and cursor contracts remain unchanged.
+```
+
+## CHANGE_HISTORY_REDIS_CACHE_AND_LOCK_COVERAGE
+
+```yaml
+- change_id: CHG-20260818-028
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: redis_cache_and_lock_coverage
+  status: done
+  change_type: test
+  summary: added_isolated_bff_workspace_overview_redis_cache_hit_miss_contract_alongside_active_ai_and_calendar_workspace_locks
+  files_changed:
+    - backend/tests/test_contracts.py
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pytest -q tests/test_contracts.py && ruff check app tests && mypy app
+      result: passed
+      notes: 11 contract tests passed; Ruff and strict mypy clean
+  tests_added:
+    - workspace overview reads Redis once on miss, writes a 30-second cache entry and serves the subsequent response from cache
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - BFF overview cache intentionally remains best-effort temporary data; PostgreSQL stays the source of truth.
+  follow_up:
+    - validate self-hosted Docker topology and real Google OAuth credentials
+    - implement transaction-safe verification email delivery
+    - move cross-context ORM checks behind application ports
+  rollback_notes: remove the isolated cache test only; existing BFF cache behavior and source-of-truth data model remain unchanged.
+```
+
+## CHANGE_HISTORY_AI_CACHE_INVALIDATION
+
+```yaml
+- change_id: CHG-20260818-029
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: ai_post_commit_overview_cache_invalidation
+  status: done
+  change_type: feature
+  summary: invalidates_temporary_user_workspace_bff_overview_cache_after_successful_ai_approval_commit_without_affecting_postgresql_source_of_truth
+  files_changed:
+    - backend/app/cache/redis_adapter.py
+    - backend/app/presentation/ai_planning.py
+    - backend/tests/test_contracts.py
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pytest -q tests/test_contracts.py && ruff check app tests && mypy app
+      result: passed
+      notes: 13 contract tests passed; Ruff and strict mypy clean
+  tests_added:
+    - exact per-user/per-workspace BFF overview cache key invalidation and Redis client close
+    - successful AI plan approval persists approved state and invokes post-commit overview cache invalidation
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - cache invalidation is best-effort by design; an unavailable Redis instance cannot roll back an audited committed AI approval.
+  follow_up:
+    - validate self-hosted Docker topology and real Google OAuth credentials
+    - implement transaction-safe verification email delivery
+    - move cross-context ORM checks behind application ports
+  rollback_notes: remove temporary cache invalidation only; committed AI data stays durable in PostgreSQL.
+```
+
+## CHANGE_HISTORY_AI_CACHE_REFRESH_INTEGRATION
+
+```yaml
+- change_id: CHG-20260818-030
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: ai_cache_refresh_end_to_end_contract
+  status: done
+  change_type: test
+  summary: proved_warm_bff_overview_is_invalidated_after_ai_createtask_approval_and_recomputed_from_postgresql_on_next_read
+  files_changed:
+    - backend/tests/test_contracts.py
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pytest -q tests/test_contracts.py && ruff check app tests && mypy app
+      result: passed
+      notes: 14 contract tests passed; Ruff and strict mypy clean
+  tests_added:
+    - warm overview cache → approved AI CreateTask → cache key deletion → refreshed overview reports new open task from SQLite source-of-truth
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - Redis cache remains best-effort; unavailable cache does not block committed AI changes and the next read falls back to PostgreSQL.
+  follow_up:
+    - validate self-hosted Docker topology and real Google OAuth credentials
+    - implement transaction-safe verification email delivery
+    - move cross-context ORM checks behind application ports
+  rollback_notes: remove only cache refresh test and invalidation call; PostgreSQL planning data remains unaffected.
+```

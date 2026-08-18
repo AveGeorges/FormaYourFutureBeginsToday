@@ -1,5 +1,6 @@
 import asyncio
 import json
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -288,6 +289,14 @@ async def test_provider_calendar_sync_imports_events_persists_cursor_and_dedupli
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     monkeypatch.setattr(calendar_sync_worker, "SessionLocal", session_factory)
     monkeypatch.setattr(calendar_sync_worker, "decrypt_token", lambda _: "google-access-token")
+    lock_calls: list[tuple[str, int]] = []
+
+    @asynccontextmanager
+    async def fake_workspace_lock(workspace_id: str, ttl_seconds: int = 30):
+        lock_calls.append((workspace_id, ttl_seconds))
+        yield
+
+    monkeypatch.setattr(calendar_sync_worker, "workspace_lock", fake_workspace_lock)
     list_events = AsyncMock(
         return_value=CalendarSyncPage(
             events=[
@@ -336,6 +345,7 @@ async def test_provider_calendar_sync_imports_events_persists_cursor_and_dedupli
     assert await calendar_sync_worker.sync_calendar_connection(event, connection_id) is True
     assert await calendar_sync_worker.sync_calendar_connection(event, connection_id) is False
     list_events.assert_awaited_once_with("google-access-token", None)
+    assert lock_calls == [(str(workspace_id), 30)]
 
     async with session_factory() as session:
         connection = await session.get(CalendarConnection, connection_id)

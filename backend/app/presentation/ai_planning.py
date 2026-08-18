@@ -1,3 +1,4 @@
+from contextlib import suppress
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
@@ -7,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.cache.redis_adapter import workspace_lock
+from app.cache.redis_adapter import invalidate_workspace_overview_cache, workspace_lock
 from app.core.audit import record_audit
 from app.core.database import get_session
 from app.core.errors import DomainError
@@ -264,10 +265,14 @@ async def approve_ai_plan(
         return {"plan_id": str(plan.id), "status": plan.status, "applied": applied}
 
     async with workspace_lock(str(workspace_id)):
-        return await execute_idempotent(
+        result = await execute_idempotent(
             session,
             user_id=context.user_id,
             scope=f"ai-plans.{plan_id}.approve",
             key=idempotency_key,
             operation=operation,
         )
+    # Cache failure must not undo a committed, audited AI approval.
+    with suppress(Exception):
+        await invalidate_workspace_overview_cache(str(context.user_id), str(workspace_id))
+    return result

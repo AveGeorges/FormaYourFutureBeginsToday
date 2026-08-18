@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cache.redis_adapter import workspace_lock
 from app.core.database import SessionLocal
 from app.events.contracts import EventEnvelope
 from app.modules.integrations.domain import ExternalEvent
@@ -71,20 +72,21 @@ async def sync_calendar_connection(event: EventEnvelope, connection_id: UUID) ->
             page = await GoogleCalendarProvider().list_events(
                 decrypt_token(connection.encrypted_access_token), connection.sync_cursor
             )
-            calendar = await _provider_calendar(session, connection)
-            for external_event in page.events:
-                await _upsert_external_event(session, calendar, external_event)
-            connection.sync_cursor = page.next_sync_cursor
-            connection.status = "connected"
-            session.add(
-                WorkerReceipt(
-                    id=uuid4(),
-                    consumer_name="calendar-provider-sync-worker",
-                    event_id=event.event_id,
-                    status="synced",
+            async with workspace_lock(str(event.workspace_id)):
+                calendar = await _provider_calendar(session, connection)
+                for external_event in page.events:
+                    await _upsert_external_event(session, calendar, external_event)
+                connection.sync_cursor = page.next_sync_cursor
+                connection.status = "connected"
+                session.add(
+                    WorkerReceipt(
+                        id=uuid4(),
+                        consumer_name="calendar-provider-sync-worker",
+                        event_id=event.event_id,
+                        status="synced",
+                    )
                 )
-            )
-            await session.commit()
+                await session.commit()
             return True
         except Exception:
             connection.status = "sync_failed"

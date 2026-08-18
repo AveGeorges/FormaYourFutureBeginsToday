@@ -29,7 +29,12 @@
 - [x] Добавить development onboarding для создания workspace и передачи `X-User-Id` только в FastAPI development mode; production остаётся только через JWT bearer.
 - [ ] Собрать React в FastAPI deployable: FastAPI обслуживает SPA и `/api/v1`, а Express runtime исключён из production path.
 - [ ] Провалидировать self-hosted Docker Compose topology FastAPI API и RabbitMQ/Redis worker processes на машине с Docker перед production запуском.
-- [ ] Интегрировать Redis в реальный calendar/AI coordination flow и покрыть lock/cache поведение тестами.
+- [x] Интегрировать Redis в реальный calendar/AI coordination flow и покрыть lock/cache поведение тестами.
+- [x] Добавить post-commit Redis invalidation BFF overview cache после AI mutating approval, не затрагивая PostgreSQL source-of-truth.
+- [x] Проверить cache invalidation и refresh BFF overview после AI mutation на isolated SQLite/Redis fake fixture.
+- [x] Добавить full cache-refresh integration test: warm BFF overview → AI CreateTask approval → invalidation → recomputed overview из PostgreSQL.
+- [x] Применить Redis workspace lock к provider-backed calendar import/upsert и покрыть отсутствие повторного lock при duplicate receipt.
+- [x] Добавить изолированную проверку Redis cache hit/miss и invalidation для calendar/AI-adjacent read model.
 - [x] Реализовать notification worker и calendar sync worker без заглушек: статус обработки, идемпотентность и тесты.
 - [x] Расширить audit trail на ключевые mutating commands workspaces, planning, tasks, calendar, time и AI approval.
 - [ ] Вынести cross-context ORM checks из FastAPI routers в application ports, чтобы bounded contexts не импортировали ORM-модели друг друга.
