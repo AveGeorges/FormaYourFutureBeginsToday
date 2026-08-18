@@ -15,7 +15,7 @@ from app.events.contracts import EventEnvelope
 from app.events.outbox import record_outbox_event
 from app.modules.identity.application.permissions import require_workspace_access
 from app.modules.scheduling.infrastructure.models import Calendar, CalendarEvent
-from app.modules.tasks.infrastructure.models import Task
+from app.modules.tasks.application.references import require_task_reference
 
 router = APIRouter()
 
@@ -125,14 +125,9 @@ async def create_calendar_event(
     )
     if calendar is None:
         raise DomainError("CALENDAR_NOT_FOUND", "Calendar does not exist in this workspace.")
-    if payload.task_id:
-        task = await session.scalar(
-            select(Task).where(
-                Task.id == payload.task_id, Task.workspace_id == payload.workspace_id
-            )
-        )
-        if task is None:
-            raise DomainError("TASK_NOT_FOUND", "Task does not exist in this workspace.")
+    await require_task_reference(
+        session, task_id=payload.task_id, workspace_id=payload.workspace_id
+    )
 
     async def operation() -> dict[str, str]:
         event = CalendarEvent(

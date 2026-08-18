@@ -14,7 +14,7 @@ from app.core.request_context import RequestContext, get_request_context
 from app.events.contracts import EventEnvelope
 from app.events.outbox import record_outbox_event
 from app.modules.identity.application.permissions import require_workspace_access
-from app.modules.tasks.infrastructure.models import Task
+from app.modules.tasks.application.references import require_task_reference
 from app.modules.time_tracking.infrastructure.models import TimeEntry
 
 router = APIRouter()
@@ -50,11 +50,9 @@ async def add_time_entry(
     if payload.ended_at <= payload.started_at:
         raise DomainError("INVALID_TIME_RANGE", "Time entry end must be later than start.")
     await require_workspace_access(session, payload.workspace_id, context.user_id)
-    task = await session.scalar(
-        select(Task).where(Task.id == payload.task_id, Task.workspace_id == payload.workspace_id)
+    await require_task_reference(
+        session, task_id=payload.task_id, workspace_id=payload.workspace_id
     )
-    if task is None:
-        raise DomainError("TASK_NOT_FOUND", "Task does not exist in this workspace.")
 
     async def operation() -> dict[str, str | int]:
         duration = int((payload.ended_at - payload.started_at).total_seconds())
@@ -114,11 +112,9 @@ async def start_timer(
     idempotency_key: str = Depends(require_idempotency_key),
 ) -> TimeEntryResponse:
     await require_workspace_access(session, payload.workspace_id, context.user_id)
-    task = await session.scalar(
-        select(Task).where(Task.id == payload.task_id, Task.workspace_id == payload.workspace_id)
+    await require_task_reference(
+        session, task_id=payload.task_id, workspace_id=payload.workspace_id
     )
-    if task is None:
-        raise DomainError("TASK_NOT_FOUND", "Task does not exist in this workspace.")
 
     async def operation() -> dict[str, str | int]:
         entry = TimeEntry(

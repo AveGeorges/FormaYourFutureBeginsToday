@@ -2195,3 +2195,51 @@ fixed_ai_command_set:
     - move remaining cross-context router ORM checks behind application ports
   rollback_notes: no runtime rollback required; this is evidence for the existing image contract.
 ```
+
+## CHANGE_HISTORY_WRITE_SIDE_REFERENCE_PORTS
+
+```yaml
+- change_id: CHG-20260818-039
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: write_side_cross_context_reference_ports
+  status: done
+  change_type: refactor
+  summary: moved_cross_context_planning_and_task_reference_checks_out_of_fastapi_write_side_routers_into_public_application_ports
+  reason: enforce_the_DDD_rule_that_a_bounded_context_does_not_import_another_context_orm_model_for_reference_ownership_checks
+  files_changed:
+    - backend/app/modules/planning/application/__init__.py
+    - backend/app/modules/planning/application/references.py
+    - backend/app/modules/tasks/application/__init__.py
+    - backend/app/modules/tasks/application/references.py
+    - backend/app/presentation/tasks.py
+    - backend/app/presentation/scheduling.py
+    - backend/app/presentation/time_tracking.py
+    - backend/tests/test_module_boundaries.py
+    - todo.md
+    - CHANGELOG_AI.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pnpm check && pnpm test && cd backend && ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: TypeScript clean; 5 Vitest tests; Ruff and strict mypy clean; 34 Python tests passed
+  tests_added:
+    - Planning and Tasks application ports preserve ACTION_NOT_FOUND, MILESTONE_NOT_FOUND and PARENT_TASK_NOT_FOUND contracts
+    - write-side Tasks, Scheduling and Time Tracking routers are prevented from importing foreign bounded-context ORM models directly
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - BFF aggregation and AI command application still contain separate cross-context ORM usages; they are now explicitly tracked as a dedicated next refactor rather than hidden under reference checks.
+  follow_up:
+    - move BFF read aggregation and AI command application onto public application query/command ports
+    - validate complete Compose topology on a self-hosted Docker server
+    - validate real Google OAuth import and Resend verification delivery under public HTTPS
+  rollback_notes: restore direct router queries only together with removal of the corresponding public application port and its boundary regression test.
+```

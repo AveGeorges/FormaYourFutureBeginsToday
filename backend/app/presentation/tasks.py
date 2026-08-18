@@ -14,7 +14,11 @@ from app.core.request_context import RequestContext, get_request_context
 from app.events.contracts import EventEnvelope
 from app.events.outbox import record_outbox_event
 from app.modules.identity.application.permissions import require_workspace_access
-from app.modules.planning.infrastructure.models import Action, Milestone
+from app.modules.planning.application.references import (
+    require_action_reference,
+    require_milestone_reference,
+)
+from app.modules.tasks.application.references import require_task_reference
 from app.modules.tasks.infrastructure.models import Task
 
 router = APIRouter()
@@ -46,22 +50,6 @@ class UpdateTaskStatusRequest(BaseModel):
     status: str = Field(pattern="^(todo|in_progress|done)$")
 
 
-async def _require_owned_link(
-    session: AsyncSession,
-    model: type[Action] | type[Milestone] | type[Task],
-    item_id: UUID | None,
-    workspace_id: UUID,
-    code: str,
-) -> None:
-    if item_id is None:
-        return
-    item = await session.scalar(
-        select(model).where(model.id == item_id, model.workspace_id == workspace_id)
-    )
-    if item is None:
-        raise DomainError(code, "Linked object does not exist in this workspace.")
-
-
 @router.post("/tasks", response_model=TaskResponse, status_code=201)
 async def create_task(
     payload: CreateTaskRequest,
@@ -70,14 +58,17 @@ async def create_task(
     idempotency_key: str = Depends(require_idempotency_key),
 ) -> TaskResponse:
     await require_workspace_access(session, payload.workspace_id, context.user_id)
-    await _require_owned_link(
-        session, Action, payload.action_id, payload.workspace_id, "ACTION_NOT_FOUND"
+    await require_action_reference(
+        session, action_id=payload.action_id, workspace_id=payload.workspace_id
     )
-    await _require_owned_link(
-        session, Milestone, payload.milestone_id, payload.workspace_id, "MILESTONE_NOT_FOUND"
+    await require_milestone_reference(
+        session, milestone_id=payload.milestone_id, workspace_id=payload.workspace_id
     )
-    await _require_owned_link(
-        session, Task, payload.parent_id, payload.workspace_id, "PARENT_TASK_NOT_FOUND"
+    await require_task_reference(
+        session,
+        task_id=payload.parent_id,
+        workspace_id=payload.workspace_id,
+        not_found_code="PARENT_TASK_NOT_FOUND",
     )
 
     async def operation() -> dict[str, str | int | None]:
