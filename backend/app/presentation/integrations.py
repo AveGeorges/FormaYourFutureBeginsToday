@@ -1,11 +1,14 @@
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
+import jwt
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.config import get_settings
 from app.core.database import get_session
 from app.core.errors import DomainError
 from app.core.idempotency import execute_idempotent, require_idempotency_key
@@ -15,6 +18,22 @@ from app.modules.integrations.infrastructure.google_calendar import GoogleCalend
 from app.modules.integrations.infrastructure.models import CalendarConnection
 
 router = APIRouter()
+
+
+def _oauth_state(connection: CalendarConnection) -> str:
+    settings = get_settings()
+    expires_at = datetime.now(UTC) + timedelta(minutes=10)
+    return jwt.encode(
+        {
+            "connection_id": str(connection.id),
+            "workspace_id": str(connection.workspace_id),
+            "owner_id": str(connection.owner_id),
+            "exp": expires_at,
+            "purpose": "google_calendar_oauth",
+        },
+        settings.jwt_secret,
+        algorithm=settings.jwt_algorithm,
+    )
 
 
 class CalendarConnectRequest(BaseModel):
@@ -54,7 +73,7 @@ async def connect_calendar(
         )
         provider = GoogleCalendarProvider()
         try:
-            url = provider.authorization_url(state=str(connection.id))
+            url = provider.authorization_url(state=_oauth_state(connection))
         except RuntimeError as exc:
             raise DomainError("CALENDAR_OAUTH_NOT_CONFIGURED", str(exc)) from exc
         session.add(connection)

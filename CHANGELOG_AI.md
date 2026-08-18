@@ -1048,3 +1048,29 @@ fixed_ai_command_set:
     - implement provider-backed import/export worker and email delivery adapter
   rollback_notes: remove token cipher and env keys together if a future secret manager replaces Fernet-at-rest encryption.
 ```
+
+## CHANGE_HISTORY_GOOGLE_OAUTH_SIGNED_STATE
+
+```yaml
+- change_id: CHG-20260818-009
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: google_oauth_signed_state
+  status: partial
+  change_type: security
+  summary: replaced_open_calendar_connection_state_with_short_lived_signed_jwt_state
+  files_changed:
+    - backend/app/presentation/integrations.py
+    - backend/tests/test_contracts.py
+  commands_run:
+    - command: ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: 9 Python tests passed
+  risks:
+    - signed state protects callback correlation but callback code exchange and token persistence are not implemented yet.
+  follow_up:
+    - validate callback state and exchange Google authorization code using server-side client secret
+    - encrypt returned access and refresh tokens in CalendarConnection
+  rollback_notes: restore the prior state construction only if replacing the auth state mechanism with server-side Redis state storage.
+```

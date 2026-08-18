@@ -13,6 +13,7 @@ from app.events.outbox import OutboxEvent, mark_publish_failure
 from app.main import create_app
 from app.modules.ai_planning.domain import ALLOWED_AI_COMMANDS
 from app.modules.integrations.infrastructure import token_cipher
+from app.presentation.integrations import _oauth_state
 
 
 def test_health_contract() -> None:
@@ -87,3 +88,14 @@ def test_integration_token_cipher_requires_valid_environment_key(
     )
     with pytest.raises(Exception, match="Integration token encryption is not configured"):
         token_cipher.encrypt_token("secret-token")
+
+
+def test_google_oauth_state_is_signed_and_short_lived() -> None:
+    connection = SimpleNamespace(
+        id=uuid4(),
+        workspace_id=uuid4(),
+        owner_id=uuid4(),
+    )
+    state = _oauth_state(connection)  # type: ignore[arg-type]
+    assert str(connection.id) not in state
+    assert state.count(".") == 2
