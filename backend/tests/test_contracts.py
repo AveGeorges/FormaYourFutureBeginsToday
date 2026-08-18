@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -8,6 +8,7 @@ import jwt
 import pytest
 from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from starlette.requests import Request
 
@@ -21,10 +22,15 @@ from app.events.outbox import OutboxEvent, mark_publish_failure
 from app.main import create_app
 from app.modules.ai_planning.domain import ALLOWED_AI_COMMANDS
 from app.modules.ai_planning.infrastructure.models import AIPlan
-from app.modules.identity.infrastructure.models import Workspace
+from app.modules.identity.infrastructure import email_verification
+from app.modules.identity.infrastructure.models import (
+    EmailVerificationToken,
+    UserProfile,
+    Workspace,
+)
 from app.modules.integrations.infrastructure import token_cipher
 from app.modules.integrations.infrastructure.models import CalendarConnection
-from app.presentation import ai_planning, bff, integrations
+from app.presentation import ai_planning, bff, identity, integrations
 from app.presentation.integrations import _oauth_state
 
 
@@ -111,6 +117,143 @@ def test_google_oauth_state_is_signed_and_short_lived() -> None:
     state = _oauth_state(connection)  # type: ignore[arg-type]
     assert str(connection.id) not in state
     assert state.count(".") == 2
+
+
+def test_verification_link_is_signed_short_lived_and_binds_user_email() -> None:
+    user_id = uuid4()
+    token = email_verification.create_verification_link_token(user_id, "person@example.com")
+
+    assert token.count(".") == 2
+    assert email_verification.parse_verification_link_token(token) == (
+        user_id,
+        "person@example.com",
+    )
+
+
+def test_expired_verification_link_is_rejected() -> None:
+    settings = get_settings()
+    token = jwt.encode(
+        {
+            "sub": str(uuid4()),
+            "email": "person@example.com",
+            "aud": "forma-email-verification",
+            "exp": datetime.now(UTC) - timedelta(seconds=1),
+        },
+        settings.jwt_secret,
+        algorithm=settings.jwt_algorithm,
+    )
+
+    with pytest.raises(DomainError, match="invalid or expired"):
+        email_verification.parse_verification_link_token(token)
+
+
+@pytest.mark.asyncio
+async def test_signed_verification_link_confirms_matching_profile_without_raw_token_table(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_async_engine("sqlite+aiosqlite://")
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+    user_id = uuid4()
+    async with session_factory() as session:
+        session.add(
+            UserProfile(
+                user_id=user_id,
+                email="person@example.com",
+                email_notifications_enabled=True,
+            )
+        )
+        await session.commit()
+
+    token = email_verification.create_verification_link_token(user_id, "person@example.com")
+    async with session_factory() as session:
+        response = await identity.confirm_email_verification_link(token, session)
+
+    assert response.email_verified is True
+    async with session_factory() as session:
+        profile = await session.get(UserProfile, user_id)
+    assert profile is not None
+    assert profile.email_verified_at is not None
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_profile_email_change_emits_empty_outbox_verification_request_without_raw_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_async_engine("sqlite+aiosqlite://")
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+    workspace_id = uuid4()
+    user_id = uuid4()
+    context = SimpleNamespace(user_id=user_id, correlation_id="profile-verification-outbox")
+    async with session_factory() as session:
+        session.add(Workspace(id=workspace_id, owner_id=user_id, name="Profile update space"))
+        await session.commit()
+
+    async with session_factory() as session:
+        response = await identity.update_profile(
+            identity.UpdateUserProfileRequest(
+                email="person@example.com", email_notifications_enabled=True
+            ),
+            context,  # type: ignore[arg-type]
+            session,
+            "profile-verification-outbox-key",
+        )
+
+    assert response.email_verified is False
+    assert "token" not in response.model_dump()
+    async with session_factory() as session:
+        events = list(
+            (
+                await session.scalars(
+                    select(OutboxEvent).where(
+                        OutboxEvent.event_type == "EmailVerificationRequested"
+                    )
+                )
+            ).all()
+        )
+        verification_tokens = list((await session.scalars(select(EmailVerificationToken))).all())
+
+    assert len(events) == 1
+    assert events[0].workspace_id == workspace_id
+    assert events[0].payload["event_type"] == "EmailVerificationRequested"
+    assert events[0].payload["payload"] == {}
+    assert "token" not in events[0].payload["payload"]
+    assert verification_tokens == []
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_profile_email_change_without_workspace_is_rejected_before_mutation() -> None:
+    engine = create_async_engine("sqlite+aiosqlite://")
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+    user_id = uuid4()
+    context = SimpleNamespace(user_id=user_id, correlation_id="profile-without-workspace")
+    async with session_factory() as session:
+        with pytest.raises(ValueError, match="Create a workspace"):
+            await identity.update_profile(
+                identity.UpdateUserProfileRequest(
+                    email="person@example.com", email_notifications_enabled=True
+                ),
+                context,  # type: ignore[arg-type]
+                session,
+                "profile-without-workspace-key",
+            )
+
+    async with session_factory() as session:
+        profile = await session.get(UserProfile, user_id)
+        events = list((await session.scalars(select(OutboxEvent))).all())
+    assert profile is None
+    assert events == []
+    await engine.dispose()
 
 
 @pytest.mark.asyncio

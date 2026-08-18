@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     integration_encryption_key: str = ""
     resend_api_key: str = ""
     resend_from_email: str = ""
+    web_app_base_url: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:

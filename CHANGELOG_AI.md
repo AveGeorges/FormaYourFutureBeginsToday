@@ -1846,3 +1846,135 @@ fixed_ai_command_set:
     - move cross-context ORM checks behind application ports
   rollback_notes: remove only cache refresh test and invalidation call; PostgreSQL planning data remains unaffected.
 ```
+
+## CHANGE_HISTORY_TRANSACTION_SAFE_VERIFICATION_EMAIL
+
+```yaml
+- change_id: CHG-20260818-031
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: transaction_safe_signed_verification_email
+  status: done
+  change_type: feature
+  summary: replaced_unused_raw_token_verification_path_with_outbox_backed_idempotent_worker_and_24_hour_signed_public_confirmation_link
+  files_changed:
+    - backend/app/core/config.py
+    - backend/app/modules/identity/infrastructure/email_verification.py
+    - backend/app/presentation/identity.py
+    - backend/app/workers/verification_email_worker.py
+    - backend/app/workers/runner.py
+    - backend/tests/test_contracts.py
+    - backend/tests/test_workers.py
+    - .env.production.example
+    - deploy/docker-compose.production.yml
+    - SELF_HOSTED_EMAIL_PROFILE_SETUP_RU.md
+    - TECHNICAL_STATUS_RU.md
+    - todo.md
+  contracts_changed:
+    api:
+      - GET /api/v1/workspaces/profile/email-verification/confirm-link?token=...
+    events:
+      - EmailVerificationRequested
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pytest -q tests/test_contracts.py tests/test_workers.py && ruff check app tests && mypy app
+      result: passed
+      notes: 24 focused Python tests passed; Ruff and strict mypy clean across 71 source files
+  tests_added:
+    - signed verification link binds user and email and is rejected after expiry
+    - public signed-link confirmation marks only matching profile as verified
+    - verification worker delivers once and persists a delivered receipt on duplicate event protection
+  migrations:
+    created: false
+    names: []
+  breaking_change: true
+  risks:
+    - old authenticated raw-token confirmation endpoint has been retired because issue flow no longer produces a raw token.
+    - real Resend/domain/public HTTPS verification remains a self-hosted runtime validation requirement.
+  follow_up:
+    - validate Docker Compose and real Resend verification flow on self-hosted host
+    - validate real Google OAuth redirect/import path
+    - decide scope for outbound Google Calendar projection
+  rollback_notes: restore previous verification endpoint only together with its raw token producer; never retain both live flows concurrently.
+```
+
+## CHANGE_HISTORY_VERIFICATION_OUTBOX_HARDENING
+
+```yaml
+- change_id: CHG-20260818-032
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: verification_outbox_profile_update_hardening
+  status: done
+  change_type: security
+  summary: emits_emailverificationrequested_in_the_same_profile_create_or_email_change_transaction_and_proves_no_raw_token_persistence
+  files_changed:
+    - backend/app/presentation/identity.py
+    - backend/tests/test_contracts.py
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pytest -q tests/test_contracts.py && ruff check app tests && mypy app
+      result: passed
+      notes: 18 contract tests passed; Ruff and strict mypy clean
+  tests_added:
+    - profile creation/change writes EmailVerificationRequested envelope with empty domain payload in same idempotent transaction
+    - profile response carries no token, EmailVerificationToken table remains empty and outbox domain payload contains no raw token
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - a profile update without a workspace cannot enqueue verification; product onboarding creates a workspace before normal profile usage.
+  follow_up:
+    - validate Docker Compose and real Resend verification flow on self-hosted host
+    - validate real Google OAuth redirect/import path
+    - decide scope for outbound Google Calendar projection
+  rollback_notes: revert profile-update outbox recording only; existing manual resend endpoint remains available.
+```
+
+## CHANGE_HISTORY_VERIFICATION_WORKSPACE_GUARD
+
+```yaml
+- change_id: CHG-20260818-033
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: verification_outbox_workspace_guard
+  status: done
+  change_type: security
+  summary: rejects_profile_email_creation_or_change_without_workspace_before_mutation_so_verification_outbox_event_cannot_be_silently_skipped
+  files_changed:
+    - backend/app/presentation/identity.py
+    - backend/tests/test_contracts.py
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pytest -q tests/test_contracts.py && ruff check app tests && mypy app
+      result: passed
+      notes: 19 contract tests passed; Ruff and strict mypy clean
+  tests_added:
+    - no-workspace profile email change raises before profile or outbox persistence
+  migrations:
+    created: false
+    names: []
+  breaking_change: true
+  risks:
+    - clients must create a workspace before adding or changing a profile email; this aligns with Forma tenancy boundary and onboarding flow.
+  follow_up:
+    - validate Docker Compose and real Resend verification flow on self-hosted host
+    - validate real Google OAuth redirect/import path
+    - decide scope for outbound Google Calendar projection
+  rollback_notes: remove guard only together with an alternative workspace-independent verification request storage design.
+```

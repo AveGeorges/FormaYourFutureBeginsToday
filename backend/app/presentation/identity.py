@@ -1,9 +1,7 @@
-from datetime import UTC, datetime, timedelta
-from hashlib import sha256
-from secrets import token_urlsafe
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,12 +10,10 @@ from app.core.audit import record_audit
 from app.core.database import get_session
 from app.core.idempotency import execute_idempotent, require_idempotency_key
 from app.core.request_context import RequestContext, get_request_context
-from app.modules.identity.infrastructure.models import (
-    EmailVerificationToken,
-    UserProfile,
-    Workspace,
-    WorkspaceMembership,
-)
+from app.events.contracts import EventEnvelope
+from app.events.outbox import record_outbox_event
+from app.modules.identity.infrastructure.email_verification import parse_verification_link_token
+from app.modules.identity.infrastructure.models import UserProfile, Workspace, WorkspaceMembership
 
 router = APIRouter()
 
@@ -40,10 +36,6 @@ class UserProfileResponse(BaseModel):
 class UpdateUserProfileRequest(BaseModel):
     email: EmailStr
     email_notifications_enabled: bool = True
-
-
-class VerifyEmailRequest(BaseModel):
-    token: str = Field(min_length=32, max_length=256)
 
 
 @router.post("", response_model=WorkspaceResponse, status_code=201)
@@ -117,15 +109,48 @@ async def update_profile(
     session: AsyncSession = Depends(get_session),
     idempotency_key: str = Depends(require_idempotency_key),
 ) -> UserProfileResponse:
+    workspace = await session.scalar(select(Workspace).where(Workspace.owner_id == context.user_id))
+    existing_profile = await session.get(UserProfile, context.user_id)
+    email_change_requested = (
+        existing_profile is None or existing_profile.email != str(payload.email)
+    )
+    if email_change_requested and workspace is None:
+        raise ValueError("Create a workspace before creating or changing a profile email.")
+
     async def operation() -> dict[str, str | bool]:
         profile = await session.get(UserProfile, context.user_id)
+        verification_required = False
         if profile is None:
             profile = UserProfile(user_id=context.user_id, email=str(payload.email))
             session.add(profile)
+            verification_required = True
         elif profile.email != str(payload.email):
             profile.email = str(payload.email)
             profile.email_verified_at = None
+            verification_required = True
         profile.email_notifications_enabled = payload.email_notifications_enabled
+        if verification_required:
+            assert workspace is not None
+            record_audit(
+                session,
+                workspace_id=workspace.id,
+                actor_id=context.user_id,
+                action="EmailVerificationRequested",
+                aggregate_type="UserProfile",
+                aggregate_id=context.user_id,
+                correlation_id=context.correlation_id,
+                details={"delivery": "outbox_signed_link", "source": "profile_update"},
+            )
+            record_outbox_event(
+                session,
+                EventEnvelope.create(
+                    event_type="EmailVerificationRequested",
+                    aggregate_id=context.user_id,
+                    workspace_id=workspace.id,
+                    correlation_id=context.correlation_id,
+                    payload={},
+                ),
+            )
         return {
             "email": profile.email,
             "email_verified": profile.email_verified_at is not None,
@@ -152,18 +177,31 @@ async def issue_email_verification(
     profile = await session.get(UserProfile, context.user_id)
     if profile is None:
         raise ValueError("Create a user profile before requesting email verification.")
+    workspace = await session.scalar(select(Workspace).where(Workspace.owner_id == context.user_id))
+    if workspace is None:
+        raise ValueError("Create a workspace before requesting email verification.")
 
     async def operation() -> dict[str, str]:
-        raw_token = token_urlsafe(32)
-        session.add(
-            EmailVerificationToken(
-                id=uuid4(),
-                user_id=context.user_id,
-                token_hash=sha256(raw_token.encode()).hexdigest(),
-                expires_at=datetime.now(UTC) + timedelta(hours=24),
-            )
+        record_audit(
+            session,
+            workspace_id=workspace.id,
+            actor_id=context.user_id,
+            action="EmailVerificationRequested",
+            aggregate_type="UserProfile",
+            aggregate_id=context.user_id,
+            correlation_id=context.correlation_id,
+            details={"delivery": "outbox_signed_link"},
         )
-        # The raw token is intentionally not returned. The external email adapter will deliver it.
+        record_outbox_event(
+            session,
+            EventEnvelope.create(
+                event_type="EmailVerificationRequested",
+                aggregate_id=context.user_id,
+                workspace_id=workspace.id,
+                correlation_id=context.correlation_id,
+                payload={},
+            ),
+        )
         return {"status": "verification_queued"}
 
     return await execute_idempotent(
@@ -175,39 +213,19 @@ async def issue_email_verification(
     )
 
 
-@router.post("/profile/email-verification/confirm", response_model=UserProfileResponse)
-async def confirm_email_verification(
-    payload: VerifyEmailRequest,
-    context: RequestContext = Depends(get_request_context),
+@router.get("/profile/email-verification/confirm-link", response_model=UserProfileResponse)
+async def confirm_email_verification_link(
+    token: str = Query(min_length=32, max_length=2048),
     session: AsyncSession = Depends(get_session),
-    idempotency_key: str = Depends(require_idempotency_key),
 ) -> UserProfileResponse:
-    async def operation() -> dict[str, str | bool]:
-        token = await session.scalar(
-            select(EmailVerificationToken).where(
-                EmailVerificationToken.user_id == context.user_id,
-                EmailVerificationToken.token_hash == sha256(payload.token.encode()).hexdigest(),
-                EmailVerificationToken.consumed_at.is_(None),
-                EmailVerificationToken.expires_at > datetime.now(UTC),
-            )
-        )
-        profile = await session.get(UserProfile, context.user_id)
-        if token is None or profile is None:
-            raise ValueError("Email verification token is invalid or expired.")
-        token.consumed_at = datetime.now(UTC)
-        profile.email_verified_at = datetime.now(UTC)
-        return {
-            "email": profile.email,
-            "email_verified": True,
-            "email_notifications_enabled": profile.email_notifications_enabled,
-        }
-
+    user_id, email = parse_verification_link_token(token)
+    profile = await session.get(UserProfile, user_id)
+    if profile is None or profile.email != email:
+        raise ValueError("Email verification link is invalid or expired.")
+    profile.email_verified_at = datetime.now(UTC)
+    await session.commit()
     return UserProfileResponse(
-        **await execute_idempotent(
-            session,
-            user_id=context.user_id,
-            scope="identity.profile.email_verification.confirm",
-            key=idempotency_key,
-            operation=operation,
-        )
+        email=profile.email,
+        email_verified=True,
+        email_notifications_enabled=profile.email_notifications_enabled,
     )

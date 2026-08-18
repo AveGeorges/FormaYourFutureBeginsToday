@@ -2,6 +2,7 @@ import asyncio
 import json
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -22,7 +23,13 @@ from app.modules.notifications.infrastructure.models import (
     WorkerReceipt,
 )
 from app.modules.scheduling.infrastructure.models import Calendar, CalendarEvent, ExternalEventLink
-from app.workers import calendar_sync_worker, email_delivery_worker, notification_worker, runner
+from app.workers import (
+    calendar_sync_worker,
+    email_delivery_worker,
+    notification_worker,
+    runner,
+    verification_email_worker,
+)
 
 
 class FakeIncomingMessage:
@@ -502,3 +509,61 @@ async def test_consumer_rejects_handler_failure_without_requeue(
 
     message.ack.assert_not_awaited()
     message.reject.assert_awaited_once_with(requeue=False)
+
+
+@pytest.mark.asyncio
+async def test_verification_email_worker_delivers_signed_link_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_async_engine("sqlite+aiosqlite://")
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    monkeypatch.setattr(verification_email_worker, "SessionLocal", session_factory)
+    monkeypatch.setattr(
+        verification_email_worker,
+        "get_settings",
+        lambda: SimpleNamespace(web_app_base_url="https://forma.example.test"),
+    )
+    send = AsyncMock(return_value="resend-verification-message")
+    monkeypatch.setattr(verification_email_worker.ResendEmailProvider, "send", send)
+
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+    workspace_id = uuid4()
+    user_id = uuid4()
+    async with session_factory() as session:
+        session.add(Workspace(id=workspace_id, owner_id=user_id, name="Verification email space"))
+        session.add(
+            UserProfile(
+                user_id=user_id,
+                email="person@example.com",
+                email_notifications_enabled=True,
+            )
+        )
+        await session.commit()
+
+    event = EventEnvelope.create(
+        event_type="EmailVerificationRequested",
+        aggregate_id=user_id,
+        workspace_id=workspace_id,
+        correlation_id="verification-email-test",
+        payload={},
+    )
+    assert await verification_email_worker.deliver_verification_email(event) is True
+    assert await verification_email_worker.deliver_verification_email(event) is False
+    assert send.await_count == 1
+    assert send.await_args is not None
+    assert send.await_args.kwargs["recipient"] == "person@example.com"
+    assert "token=" in send.await_args.kwargs["text"]
+
+    async with session_factory() as session:
+        receipt = await session.scalar(
+            select(WorkerReceipt).where(
+                WorkerReceipt.consumer_name == "verification-email-worker",
+                WorkerReceipt.event_id == event.event_id,
+            )
+        )
+    assert receipt is not None
+    assert receipt.status == "delivered"
+
+    await engine.dispose()

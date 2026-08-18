@@ -2,7 +2,7 @@
 
 Этот документ описывает выбранную для Forma модель: **адрес получателя хранится в self-hosted профиле пользователя**, а не зависит от внешнего JWT issuer. Благодаря этому система уведомлений имеет собственный источник правды для адреса и пользовательского согласия на email-рассылку.
 
-> В текущем checkpoint готовы схема PostgreSQL, REST contract профиля, одноразовые verification tokens, настройки окружения для Resend и отправка **product notifications** после commit in-app уведомления. Доставка строго блокируется, пока адрес не подтверждён или пользователь не отключил email-уведомления. Отправка **verification email** пока намеренно не включена: для неё требуется отдельный transaction-safe flow, который не хранит raw token и не отправляет ссылку до успешной фиксации token hash в PostgreSQL.
+> В текущем checkpoint готовы схема PostgreSQL, REST contract профиля, настройки окружения для Resend, отправка **product notifications** после commit in-app уведомления и transaction-safe отправка **verification email** через Transactional Outbox. Доставка product notifications строго блокируется, пока адрес не подтверждён или пользователь не отключил email-уведомления. Verification link подписан, действует 24 часа и не требует хранения raw token в PostgreSQL.
 
 ## 1. Что появилось в базе данных
 
@@ -79,7 +79,7 @@ curl --fail-with-body "$FORMA_URL/api/v1/workspaces/profile" \
 
 ## 4. Запрос подтверждения email
 
-После настройки профиля запросите verification token:
+После настройки профиля запросите отправку verification email:
 
 ```bash
 curl --fail-with-body -X POST "$FORMA_URL/api/v1/workspaces/profile/email-verification" \
@@ -87,21 +87,9 @@ curl --fail-with-body -X POST "$FORMA_URL/api/v1/workspaces/profile/email-verifi
   -H "Idempotency-Key: $(uuidgen)"
 ```
 
-В текущей версии API вернёт `verification_queued` и создаст одноразовый token hash со сроком действия 24 часа. Raw token намеренно не возвращается API и не хранится в PostgreSQL.
+API вернёт `verification_queued`. В этой же транзакции в Transactional Outbox записывается факт `EmailVerificationRequested`; после publish event worker запрашивает актуальный профиль, создаёт короткоживущую signed link и отправляет письмо через Resend. Raw token не возвращается API, не записывается в PostgreSQL и не входит в event payload.
 
-> **Ограничение текущей версии.** Verification email ещё не отправляется через Resend, поэтому production-подтверждение адреса нельзя завершить только этим API. Не отмечайте профиль как verified вручную и не обходите delivery gate. Следующей отдельной работой будет безопасный verification mail flow через transactional outbox либо одноразовый signed confirmation link.
-
-Когда transaction-safe verification mail flow будет подключён, письмо будет содержать verification link/token. Подтверждение выполняется запросом:
-
-```bash
-curl --fail-with-body -X POST "$FORMA_URL/api/v1/workspaces/profile/email-verification/confirm" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Idempotency-Key: $(uuidgen)" \
-  -H "Content-Type: application/json" \
-  --data '{"token":"TOKEN_FROM_VERIFICATION_MESSAGE"}'
-```
-
-После этого `email_verified` станет `true`. Использованный token нельзя применить повторно.
+Откройте ссылку из письма в течение 24 часов. Она вызывает публичный endpoint подтверждения и возвращает JSON профиля с `email_verified: true`. Для ручной диагностики можно открыть link целиком из письма; Bearer JWT и `Idempotency-Key` для signed link не требуются, потому что подпись связывает link с конкретными `user_id` и email.
 
 ## 5. Переменные окружения для Resend
 
@@ -110,6 +98,8 @@ curl --fail-with-body -X POST "$FORMA_URL/api/v1/workspaces/profile/email-verifi
 ```dotenv
 RESEND_API_KEY=re_...
 RESEND_FROM_EMAIL=Forma <notifications@your-verified-domain.example>
+# Должен совпадать с публичным HTTPS origin, доступным из почтового клиента.
+FORMA_WEB_APP_BASE_URL=https://forma.example.com
 ```
 
 У Resend должен быть подтверждён домен отправителя. После изменения `.env` перезапустите API и event worker:
@@ -125,7 +115,7 @@ docker compose --env-file .env -f deploy/docker-compose.production.yml \
 |---|---|
 | Не отправлять на непроверенный адрес | Предотвращает доставку на ошибочный или чужой email. |
 | Не отправлять при выключенном preference | Пользователь сохраняет контроль над уведомлениями. |
-| Не хранить raw verification token | Утечка базы не должна позволять подтвердить email. |
+| Не хранить raw verification token | Утечка базы не должна позволять подтвердить email. Signed link создаётся worker после outbox commit и действует 24 часа. |
 | Не использовать JWT claim как единственный email source | Внешний issuer может поменять claim или прекратить его выдачу. |
 | Хранить каждую provider attempt отдельно | Можно диагностировать ошибки и не смешивать in-app с email delivery. |
 | Запускать product email только после commit in-app уведомления | Ошибка Resend не меняет receipt idempotency и не переводит RabbitMQ event в DLQ. |
@@ -138,6 +128,6 @@ docker compose --env-file .env -f deploy/docker-compose.production.yml \
 
 ## 8. Текущая готовность и следующие действия
 
-Готовы профиль, verified-email schema, notification preferences, Resend HTTP adapter, `EmailDeliveryAttempt`, active notification delivery wiring и mocked integration coverage для `delivered`, `failed`, `skipped_missing_profile`, `skipped_unverified` и `skipped_opt_out`.
+Готовы профиль, verified-email schema, notification preferences, Resend HTTP adapter, `EmailDeliveryAttempt`, active notification delivery wiring, verification email через Transactional Outbox и signed link, а также mocked coverage profile-gated delivery states, signed link success/expiry и worker receipt idempotency.
 
-До полностью end-to-end verified-email flow остаётся один самостоятельный этап: отправка verification message через transaction-safe provider/outbox flow без хранения raw token в PostgreSQL. Он остаётся открытым в `todo.md` и `CHANGELOG_AI.md`. До его завершения deployment можно использовать для in-app уведомлений и для внешней доставки только уже подтверждённым профилям, созданным через будущий безопасный verification flow.
+Перед production-включением обязательно проверьте flow на собственном домене и реальном Resend sandbox: worker должен быть запущен, `FORMA_WEB_APP_BASE_URL` должен быть доступен по HTTPS, а адрес из `RESEND_FROM_EMAIL` — подтверждён в Resend. Не отмечайте профиль verified вручную и не обходите delivery gate.

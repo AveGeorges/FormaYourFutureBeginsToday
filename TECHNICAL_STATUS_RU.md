@@ -59,12 +59,12 @@ React 19/Vite клиент использует TanStack Query и REST client `c
 | Интеграция | Состояние | Что уже есть | Что необходимо завершить до включения |
 |---|---|---|---|
 | Google Calendar | Partial | OAuth start URL, signed state, callback, code→token exchange, encrypted token storage; Transactional Outbox `CalendarSyncRequested`; provider worker import/upsert в `CalendarEvent` и `ExternalEventLink`, sync cursor и success/failed states | реальная Google credential/redirect validation на self-hosted host, outbound export внутреннего события |
-| Email | Partial | in-app notification, active post-commit Resend delivery, verified profile gate, opt-out gate, `EmailDeliveryAttempt`, mocked state tests | transaction-safe verification email flow, real server integration test, operational retry policy for failed provider requests |
+| Email | Partial | in-app notification, active post-commit Resend delivery, verified profile/opt-out gates, `EmailDeliveryAttempt`; Transactional Outbox verification request, signed 24-hour confirmation link и dedicated idempotent verification worker | реальная проверка Resend/domain/HTTPS link на self-hosted host, operational retry policy for failed provider requests |
 | RabbitMQ | Production topology готова | EventBus adapter, outbox publisher, worker, DLQ/retry config | запуск и проверка на Docker host |
-| Redis | Foundation | cache/lock adapter и configuration | calendar/AI coordination usage и lock/cache integration tests |
+| Redis | Integrated | workspace locks для AI approval и calendar import; BFF overview cache, post-commit AI invalidation и cache-refresh tests | проверка реального Redis в Docker topology |
 | JWT | Adapter готов | bearer token validation и development fallback | реальный issuer/session exchange и production environment setup |
 
-Следовательно, **секреты действительно можно и нужно будет задать только через переменные окружения на вашем сервере**. Product-notification email flow уже реализован, но остаётся неполным, пока нет безопасной отправки verification email; Google Calendar import реализован, но требует реальной проверки credentials и redirect URI на self-hosted host. Эти ограничения явно сохранены в `todo.md` и `CHANGELOG_AI.md`.
+Следовательно, **секреты действительно можно и нужно будет задать только через переменные окружения на вашем сервере**. Email verification flow реализован через outbox и signed link без raw token persistence, но требует реальной проверки Resend и публичного HTTPS origin на self-hosted host. Google Calendar import также требует реальной проверки credentials и redirect URI. Эти ограничения явно сохранены в `todo.md` и `CHANGELOG_AI.md`.
 
 ## 4. Deployment готовность
 
@@ -74,10 +74,10 @@ Production topology разделяет static React build и FastAPI API: Nginx 
 
 ## 5. Ближайшие обязательные шаги
 
-1. Реализовать transaction-safe отправку verification email без хранения raw token и проверить её на реальном provider sandbox.
-2. Проверить `deploy/docker-compose.production.yml` на сервере с Docker, PostgreSQL, Redis и RabbitMQ.
-3. Интегрировать Redis в calendar/AI coordination и покрыть lock/cache сценарии тестами.
-4. Довести client calendar navigation до Year → Quarter → Month → Week → Day.
-5. Проверить реальный Google OAuth redirect и import с credentials, заданными через переменные окружения.
+1. Проверить `deploy/docker-compose.production.yml` на сервере с Docker, PostgreSQL, Redis и RabbitMQ.
+2. Проверить реальную отправку/подтверждение verification email через Resend и публичный HTTPS origin.
+3. Проверить реальный Google OAuth redirect и import с credentials, заданными через переменные окружения.
+4. Реализовать или явно отложить outbound projection внутренних CalendarEvent в Google Calendar.
+5. Вынести cross-context ORM checks из router layer в application ports.
 
 Все значимые изменения, риски, quality checks и дальнейшие шаги фиксируются append-only в `CHANGELOG_AI.md`.

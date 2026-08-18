@@ -73,7 +73,14 @@
 - [x] Добавить отдельные provider-payload tests для `TaskReminder` и `CalendarEventReminder` templates.
 - [x] Актуализировать self-hosted email profile runbook и технический статус после подключения active notification email wiring, сохранив явное описание оставшихся ограничений.
 - [x] Документированно отложить end-to-end отправку verification email через provider, не создавая ложного impression полного email-confirmation flow.
-- [ ] Реализовать transaction-safe verification email flow через outbox или signed confirmation link без хранения raw token в PostgreSQL.
+- [x] Реализовать transaction-safe verification email flow через outbox или signed confirmation link без хранения raw token в PostgreSQL.
+- [x] Записывать EmailVerificationRequested в Transactional Outbox одновременно с изменением профиля, без raw verification token в БД или event payload.
+- [x] Реализовать отдельный verification email worker с signed confirmation link, env-only public base URL и idempotent receipt.
+- [x] Добавить mocked tests verification email delivery, signed confirmation success/expiry и отсутствие raw token persistence.
+- [x] Добавить contract test rejected expired signed verification link до profile mutation.
+- [x] Публиковать EmailVerificationRequested в transaction update_profile при создании/смене email, чтобы verification delivery не зависела от отдельного ручного POST.
+- [x] Добавить explicit tests, что новый verification flow не создаёт EmailVerificationToken и не возвращает/не записывает raw token в API response или outbox payload.
+- [x] Запретить создание/смену email профиля без workspace и покрыть этот guard test, чтобы verification outbox event никогда не терялся.
 
 - [x] Синхронизировать проект с подключённым GitHub-репозиторием и сохранить архитектурные документы в корне проекта.
 - [x] Зафиксировать название Forma, позиционирование и девиз в метаданных приложения и стартовом интерфейсе.

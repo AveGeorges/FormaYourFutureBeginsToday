@@ -14,6 +14,7 @@ from app.modules.identity.infrastructure.models import Workspace
 from app.modules.scheduling.infrastructure.models import ExternalEventLink
 from app.workers.calendar_sync_worker import mark_external_event_for_sync, sync_calendar_connection
 from app.workers.notification_worker import handle_notification_event
+from app.workers.verification_email_worker import deliver_verification_email
 
 
 def parse_event(raw: bytes) -> EventEnvelope:
@@ -37,7 +38,9 @@ async def dispatch_event(event: EventEnvelope) -> None:
         )
         if workspace is None:
             return
-        if event.event_type != "CalendarSyncRequested":
+        if event.event_type == "EmailVerificationRequested":
+            await deliver_verification_email(event)
+        elif event.event_type != "CalendarSyncRequested":
             await handle_notification_event(event, workspace.owner_id)
         if event.event_type == "CalendarEventScheduled":
             links = await session.scalars(
