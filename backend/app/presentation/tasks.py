@@ -91,6 +91,7 @@ async def create_task(
             action_id=payload.action_id,
             milestone_id=payload.milestone_id,
             parent_id=payload.parent_id,
+            status="todo",
         )
         session.add(task)
         record_audit(

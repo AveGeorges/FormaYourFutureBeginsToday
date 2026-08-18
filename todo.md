@@ -19,13 +19,13 @@
 - [x] Добавить Redis для временного состояния, кэша и coordination locks без переноса доменной истины из PostgreSQL.
 - [ ] Реализовать worker для уведомлений и календарной синхронизации с идемпотентной обработкой событий.
 - [x] Создать normalised CalendarEvent и ExternalEventLink для будущей OAuth-интеграции внешнего календаря.
-- [ ] Перевести React-клиент с tRPC на versioned REST/BFF contracts без изменения согласованных пользовательских сценариев.
+- [x] Перевести React-клиент с tRPC на versioned REST/BFF contracts без изменения согласованных пользовательских сценариев.
 - [x] Настроить JSON logs, request/correlation IDs, audit trail, Ruff, mypy, pytest, pre-commit и contract tests.
 - [ ] Удалить либо архивировать заменённый Express/tRPC/Drizzle backend после подтверждения parity FastAPI implementation.
 - [x] Обновить CHANGELOG_AI.md и подтвердить соответствие итоговой архитектуры документации.
 - [x] Добавить production authentication adapter для FastAPI Gateway/BFF вместо development-only trusted `X-User-Id` header.
-- [ ] Перевести все frontend tRPC-вызовы на REST/BFF client и добавить browser-проверку полного вертикального сценария.
-- [ ] Настроить development/prod routing React → FastAPI `/api/v1`, CORS и browser smoke test с реальным REST response.
+- [x] Перевести все frontend tRPC-вызовы на REST/BFF client и добавить browser-проверку полного вертикального сценария.
+- [x] Настроить development/prod routing React → FastAPI `/api/v1`, CORS и browser smoke test с реальным REST response.
 - [x] Добавить development onboarding для создания workspace и передачи `X-User-Id` только в FastAPI development mode; production остаётся только через JWT bearer.
 - [ ] Собрать React в FastAPI deployable: FastAPI обслуживает SPA и `/api/v1`, а Express runtime исключён из production path.
 - [ ] Провалидировать self-hosted Docker Compose topology FastAPI API и RabbitMQ/Redis worker processes на машине с Docker перед production запуском.
@@ -38,6 +38,9 @@
 - [x] Добавить retry/backoff и dead-letter queue для RabbitMQ consumers с тестами повторной доставки.
 - [ ] Довести календарный client drill-down до Year → Quarter → Month → Week → Day с breadcrumb и Back через REST/BFF data.
 - [ ] Завершить Google Calendar OAuth callback/token exchange и encrypted token storage перед production-включением OAuth runbook.
+- [x] Исправить устаревшие числовые преобразования ID в React task/calendar/time формах на UUID-совместимую передачу REST идентификаторов.
+- [ ] Реализовать provider-backed calendar sync worker с success/failed статусами и sync cursor; текущий handler только ставит link в очередь.
+- [ ] Добавить integration/e2e тесты `runner.dispatch_event` для notification, calendar link queueing, duplicate delivery и failure paths.
 
 - [x] Синхронизировать проект с подключённым GitHub-репозиторием и сохранить архитектурные документы в корне проекта.
 - [x] Зафиксировать название Forma, позиционирование и девиз в метаданных приложения и стартовом интерфейсе.

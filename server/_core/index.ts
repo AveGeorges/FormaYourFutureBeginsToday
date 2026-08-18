@@ -3,6 +3,7 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import { registerFastApiDevelopmentProxy } from "./fastapiProxy";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
@@ -46,6 +47,7 @@ async function startServer() {
   );
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
+    registerFastApiDevelopmentProxy(app);
     await setupVite(app, server);
   } else {
     serveStatic(app);

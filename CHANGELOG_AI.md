@@ -830,3 +830,63 @@ fixed_ai_command_set:
     - archive old Express/tRPC/Drizzle scaffold after runtime parity confirmation
   rollback_notes: use a git tag or the prior checkpoint before applying server migration on a production database.
 ```
+
+## CHANGE_HISTORY_RUNTIME_SMOKE
+
+```yaml
+- change_id: CHG-20260818-004
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: ARCH-001_runtime_smoke
+  status: partial
+  change_type: bugfix
+  summary: verified_react_to_fastapi_rest_bff_path_and_fixed_uuid_proxy_and_response_default_defects
+  files_changed:
+    - server/_core/fastapiProxy.ts
+    - server/_core/fastapiProxy.test.ts
+    - server/_core/index.ts
+    - client/src/pages/Home.tsx
+    - backend/scripts/bootstrap_sqlite_smoke.py
+    - backend/SMOKE_TEST_RESULTS.md
+    - backend/tests/test_workers.py
+    - backend/app/presentation/planning.py
+    - backend/app/presentation/tasks.py
+    - backend/app/presentation/scheduling.py
+    - todo.md
+  contracts_changed:
+    api:
+      - development_same_origin_proxy_to_/api/v1
+      - explicit_canonical_statuses_in_create_responses
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: full REST vertical slice through time entry and BFF
+      result: passed
+      notes: temporary SQLite only; production remains PostgreSQL plus Alembic
+    - command: browser React onboarding and full BFF slice projection
+      result: passed
+      notes: verified React -> same-origin proxy -> FastAPI and rendered domain links
+    - command: pnpm check && pnpm test
+      result: passed
+      notes: 10 Vitest tests passed
+    - command: ruff check app tests scripts && mypy app && pytest -q
+      result: passed
+      notes: 6 Python tests passed
+  tests_added:
+    - development_fastapi_proxy_target_validation
+    - notification_and_calendar_sync_handler_receipt_idempotency
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - temporary SQLite smoke setup does not replace Compose validation with PostgreSQL, Redis and RabbitMQ.
+    - calendar sync handler queues link state but does not execute provider-backed external sync.
+  follow_up:
+    - validate Compose topology on target Docker host
+    - complete JWT issuer and Google OAuth callback/token encryption before public launch
+    - implement provider-backed calendar sync and email delivery adapter
+  rollback_notes: revert CHG-20260818-004 files together if the managed development proxy is no longer required.
+```

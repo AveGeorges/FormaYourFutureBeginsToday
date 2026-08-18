@@ -117,6 +117,7 @@ async def create_dream(
             title=payload.title,
             description=payload.description,
             visual_config=payload.visual_config,
+            status="active",
         )
         session.add(dream)
         record_audit(
@@ -183,6 +184,7 @@ async def create_goal(
             title=payload.title,
             description=payload.description,
             target_date=payload.target_date,
+            status="active",
         )
         session.add(goal)
         record_audit(
@@ -244,6 +246,7 @@ async def create_roadmap(
             workspace_id=payload.workspace_id,
             goal_id=payload.goal_id,
             title=payload.title,
+            status="active",
         )
         session.add(roadmap)
         record_audit(
@@ -309,6 +312,7 @@ async def create_milestone(
             title=payload.title,
             position=payload.position,
             target_date=payload.target_date,
+            status="planned",
         )
         session.add(milestone)
         record_audit(
@@ -371,6 +375,7 @@ async def create_action(
             milestone_id=payload.milestone_id,
             title=payload.title,
             estimate_minutes=payload.estimate_minutes,
+            status="planned",
         )
         session.add(action)
         record_audit(

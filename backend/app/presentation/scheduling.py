@@ -144,6 +144,7 @@ async def create_calendar_event(
             title=payload.title,
             starts_at=payload.starts_at,
             ends_at=payload.ends_at,
+            status="scheduled",
         )
         session.add(event)
         record_audit(
