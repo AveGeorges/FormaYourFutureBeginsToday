@@ -46,6 +46,9 @@
 - [ ] Завершить email delivery adapter с конфигурируемым provider API key, delivery attempts и production runbook без хранения секретов в репозитории.
 - [ ] Подготовить исчерпывающий русскоязычный статус backend/frontend, deployment guide и integration setup guide для самостоятельного self-hosted запуска.
 - [ ] После каждого milestone обновлять CHANGELOG_AI.md с выполненными работами, проверками, рисками и следующими шагами.
+- [ ] Добавить self-hosted UserProfile с verified email как источник адреса для внешней email-доставки.
+- [ ] Добавить notification preferences и server-side проверки, запрещающие email delivery до подтверждения адреса.
+- [ ] Подготовить подробную русскоязычную инструкцию настройки профиля, подтверждения email, Resend и self-hosted deployment.
 
 - [x] Синхронизировать проект с подключённым GitHub-репозиторием и сохранить архитектурные документы в корне проекта.
 - [x] Зафиксировать название Forma, позиционирование и девиз в метаданных приложения и стартовом интерфейсе.

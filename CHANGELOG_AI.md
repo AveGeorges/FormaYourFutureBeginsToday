@@ -1128,3 +1128,61 @@ fixed_ai_command_set:
     - add integration tests for successful and failed external delivery
   rollback_notes: downgrade revision 20260818_0004 before removing EmailDeliveryAttempt model.
 ```
+
+## CHANGE_DECISION_SELF_HOSTED_EMAIL_PROFILE
+
+```yaml
+- change_id: CHG-20260818-012
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: self_hosted_email_recipient_identity
+  status: approved
+  change_type: architecture_decision
+  summary: user_approved_self_hosted_profile_with_verified_email_and_notification_preferences
+  decision:
+    selected_option: self_hosted_user_profile
+    rejected_option: jwt_claim_only_recipient_email
+    rationale:
+      - delivery remains independent of a particular production JWT issuer.
+      - Forma obtains a durable source of truth for verified recipient email and notification preferences.
+  implementation_scope:
+    - UserProfile persisted by user UUID
+    - verified email address
+    - email notification preference
+    - server-side delivery gate requiring verified profile
+  risks:
+    - initial profile verification flow must be implemented before external email is activated.
+  follow_up:
+    - add database migration, REST profile commands and verification tokens
+    - connect Resend delivery adapter only after verified address check
+    - document self-hosted profile and provider configuration
+  rollback_notes: remove profile/delivery migration in reverse order if email delivery feature is withdrawn.
+```
+
+## CHANGE_HISTORY_SELF_HOSTED_PROFILE_SCHEMA
+
+```yaml
+- change_id: CHG-20260818-013
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: self_hosted_profile_persistence
+  status: partial
+  change_type: database
+  summary: added_user_profiles_and_email_verification_tokens_for_verified_email_delivery_gate
+  files_changed:
+    - backend/app/modules/identity/infrastructure/models.py
+    - backend/alembic/versions/20260818_0005_user_profiles.py
+  commands_run:
+    - command: ruff check app tests && mypy app && alembic upgrade head --sql
+      result: passed
+      notes: PostgreSQL migration chain creates user_profiles and email_verification_tokens
+  risks:
+    - profile REST commands, verification email issue/consume flow and delivery gate remain unimplemented.
+  follow_up:
+    - implement authenticated profile update and notification preference endpoints
+    - issue and consume single-use verification tokens
+    - connect verified profile to Resend delivery adapter
+  rollback_notes: downgrade revision 20260818_0005 before removing self-hosted profile ORM models.
+```
