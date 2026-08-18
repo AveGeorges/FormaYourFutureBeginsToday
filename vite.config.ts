@@ -170,6 +170,12 @@ export default defineConfig({
   },
   server: {
     host: true,
+    proxy: {
+      "/api/v1": {
+        target: process.env.VITE_FORMA_API_PROXY ?? "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+    },
     allowedHosts: [
       ".manuspre.computer",
       ".manus.computer",

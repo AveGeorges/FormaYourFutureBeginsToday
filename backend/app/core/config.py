@@ -19,6 +19,8 @@ class Settings(BaseSettings):
         validation_alias="JWT_SECRET",
     )
     jwt_algorithm: str = "HS256"
+    google_calendar_client_id: str = ""
+    google_calendar_redirect_uri: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:

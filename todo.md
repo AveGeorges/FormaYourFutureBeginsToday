@@ -2,30 +2,42 @@
 
 ## Архитектурная пересборка: решение ARCH-001 / вариант A
 
+## Self-hosted server delivery
+
+- [x] Подготовить production Compose topology с FastAPI API, outbox publisher, worker consumers, PostgreSQL, Redis, RabbitMQ, Nginx и persistent volumes.
+- [x] Добавить production env template без секретов, безопасные defaults, healthchecks и команды миграции Alembic.
+- [x] Добавить internal Nginx reverse proxy со SPA fallback и проксированием `/api/v1` в FastAPI; TLS терминируется внешним Caddy reverse proxy.
+- [x] Создать server deployment guide: требования Ubuntu/Docker, первый запуск, обновление, бэкапы, observability и troubleshooting.
+- [x] Создать email provider runbook и draft Google Calendar OAuth runbook с явно указанными prerequisite implementation steps.
+
 - [ ] Сохранить текущий React-интерфейс как UI-reference и прекратить развитие Express/tRPC/Drizzle backend.
 - [x] Создать Python/FastAPI/Pydantic/SQLAlchemy/Alembic backend со структурой DDD bounded contexts.
 - [x] Настроить PostgreSQL как единственный source of truth и миграции Alembic вместо MySQL-compatible Drizzle schema.
 - [x] Реализовать REST API `/api/v1` с логическими слоями API Gateway и web BFF.
 - [x] Добавить `Idempotency-Key` для каждого mutating command и backend workspace ownership/permissions checks.
 - [x] Реализовать Transactional Outbox, EventBus abstraction и RabbitMQ transport adapter.
-- [ ] Добавить Redis для временного состояния, кэша и coordination locks без переноса доменной истины из PostgreSQL.
+- [x] Добавить Redis для временного состояния, кэша и coordination locks без переноса доменной истины из PostgreSQL.
 - [ ] Реализовать worker для уведомлений и календарной синхронизации с идемпотентной обработкой событий.
 - [x] Создать normalised CalendarEvent и ExternalEventLink для будущей OAuth-интеграции внешнего календаря.
 - [ ] Перевести React-клиент с tRPC на versioned REST/BFF contracts без изменения согласованных пользовательских сценариев.
-- [ ] Настроить JSON logs, request/correlation IDs, audit trail, Ruff, mypy, pytest, pre-commit и contract tests.
+- [x] Настроить JSON logs, request/correlation IDs, audit trail, Ruff, mypy, pytest, pre-commit и contract tests.
 - [ ] Удалить либо архивировать заменённый Express/tRPC/Drizzle backend после подтверждения parity FastAPI implementation.
-- [ ] Обновить CHANGELOG_AI.md и подтвердить соответствие итоговой архитектуры документации.
-- [ ] Добавить production authentication adapter для FastAPI Gateway/BFF вместо development-only trusted `X-User-Id` header.
+- [x] Обновить CHANGELOG_AI.md и подтвердить соответствие итоговой архитектуры документации.
+- [x] Добавить production authentication adapter для FastAPI Gateway/BFF вместо development-only trusted `X-User-Id` header.
 - [ ] Перевести все frontend tRPC-вызовы на REST/BFF client и добавить browser-проверку полного вертикального сценария.
-- [ ] Разместить FastAPI API и RabbitMQ/Redis worker topology на persistent/always-on окружении, так как autoscale runtime не выполняет долговечные worker-процессы.
+- [ ] Настроить development/prod routing React → FastAPI `/api/v1`, CORS и browser smoke test с реальным REST response.
+- [x] Добавить development onboarding для создания workspace и передачи `X-User-Id` только в FastAPI development mode; production остаётся только через JWT bearer.
+- [ ] Собрать React в FastAPI deployable: FastAPI обслуживает SPA и `/api/v1`, а Express runtime исключён из production path.
+- [ ] Провалидировать self-hosted Docker Compose topology FastAPI API и RabbitMQ/Redis worker processes на машине с Docker перед production запуском.
 - [ ] Интегрировать Redis в реальный calendar/AI coordination flow и покрыть lock/cache поведение тестами.
 - [ ] Реализовать notification worker и calendar sync worker без заглушек: статус обработки, идемпотентность и тесты.
-- [ ] Расширить audit trail на ключевые mutating commands workspaces, planning, tasks, calendar, time и AI approval.
+- [x] Расширить audit trail на ключевые mutating commands workspaces, planning, tasks, calendar, time и AI approval.
 - [ ] Вынести cross-context ORM checks из FastAPI routers в application ports, чтобы bounded contexts не импортировали ORM-модели друг друга.
 - [ ] Реализовать один внешний CalendarProvider OAuth adapter, encrypted token storage и import flow через ExternalEventLink.
 - [ ] Подключить базовую email delivery adapter и delivery attempts для deadline/reminder/AI approval notifications.
-- [ ] Добавить retry/backoff и dead-letter queue для RabbitMQ consumers с тестами повторной доставки.
+- [x] Добавить retry/backoff и dead-letter queue для RabbitMQ consumers с тестами повторной доставки.
 - [ ] Довести календарный client drill-down до Year → Quarter → Month → Week → Day с breadcrumb и Back через REST/BFF data.
+- [ ] Завершить Google Calendar OAuth callback/token exchange и encrypted token storage перед production-включением OAuth runbook.
 
 - [x] Синхронизировать проект с подключённым GitHub-репозиторием и сохранить архитектурные документы в корне проекта.
 - [x] Зафиксировать название Forma, позиционирование и девиз в метаданных приложения и стартовом интерфейсе.

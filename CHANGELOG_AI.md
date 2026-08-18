@@ -11,7 +11,7 @@ project_codename: planning-platform
 product_type: web-first personal planning platform
 primary_language: ru
 current_iteration: 1
-current_status: architecture_rebuild_option_A_in_progress
+current_status: self_hosted_fastapi_rebuild_core_ready
 source_of_truth:
   implementation_guide: MANUS_1_6_IMPLEMENTATION_GUIDE.md
   architecture_blueprint: planning-platform-blueprint.md
@@ -28,15 +28,14 @@ status: partial
 last_updated: 2026-08-18
 implemented: partial
 active_vertical_slice: Dream -> Goal -> Roadmap -> Action -> Task -> CalendarEvent -> TimeEntry
-current_priority: complete_rest_frontend_parity_and_retire_express_trpc_backend
-blocking_issues:
-  - current_react_client_still_uses_temporary_trpc_ui_reference_adapter
+current_priority: complete_production_auth_and_external_calendar_oauth_before_public_launch
+blocking_issues: []
 known_risks:
   - email_notification_records_are_queued_but_no_external_email_provider_is_configured
-  - deadline_and_calendar_reminders_require_deployed_heartbeat_setup_before_automatic_delivery
-  - external_calendar_oauth_provider_is_not_implemented_in_this_iteration
+  - external_calendar_oauth_callback_token_exchange_and_encrypted_token_storage_remain_incomplete
+  - production_jwt_issuer_or_oauth_session_exchange_must_be_connected_before_public_launch
   - Flow_Map_uses_real_domain_links_but_persisted_custom_board_edges_remain_a_future_iteration
-  - FastAPI_worker_topology_requires_persistent_or_always_on_runtime_for_production
+  - real_postgresql_redis_rabbitmq_stack_must_be_started_on_the_user_server_before_runtime_verification
 ```
 
 ## PRODUCT_CONTEXT
@@ -763,3 +762,71 @@ fixed_ai_command_set:
 
 - [x] Resolve ARCH-001 with explicit user confirmation before further backend architecture work; user selected OPTION-A.
 - [x] Resolve whether CreateBoardLayout is allowed; the fixed five-command AI set is authoritative.
+
+## CHANGE_HISTORY_SELF_HOSTED_DELIVERY
+
+```yaml
+- change_id: CHG-20260818-003
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: ARCH-001_option_A_self_hosted_delivery
+  status: partial
+  change_type: architecture
+  summary: prepared_self_hosted_fastapi_rebuild_with_rest_bff_compose_workers_and_server_runbook
+  files_changed:
+    - backend/
+    - client/src/lib/formaApi.ts
+    - client/src/_core/hooks/useAuth.ts
+    - client/src/main.tsx
+    - deploy/docker-compose.production.yml
+    - deploy/frontend.Dockerfile
+    - deploy/nginx/default.conf
+    - deploy/Caddyfile
+    - deploy/backup-postgres.sh
+    - .env.production.example
+    - SERVER_DEPLOYMENT.md
+  contracts_changed:
+    api:
+      - /api/v1 REST/BFF client transport
+      - /api/v1 integrations calendar connect/sync boundary
+    events:
+      - retry_and_dead_letter_policy
+      - idempotent_worker_receipts
+    database:
+      - alembic_20260818_0001_initial_schema
+      - alembic_20260818_0002_ai_boards_notifications
+      - alembic_20260818_0003_worker_receipts
+    ai_tools:
+      - CreateGoal
+      - CreateRoadmap
+      - CreateTask
+      - SuggestCalendarSlots
+      - ProjectTaskToCalendar
+  commands_run:
+    - command: pnpm check && pnpm test
+      result: passed
+      notes: TypeScript clean; 8 legacy UI-reference tests passed
+    - command: ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: FastAPI lint/typecheck clean; 5 Python contract tests passed
+    - command: alembic upgrade head --sql
+      result: passed
+      notes: all PostgreSQL migration SQL generated successfully
+  migrations:
+    created: true
+    names:
+      - 20260818_0001_initial_schema
+      - 20260818_0002_ai_boards_notifications
+      - 20260818_0003_worker_receipts
+  breaking_change: true
+  risks:
+    - Docker daemon was unavailable in the build sandbox, so compose runtime must be verified on target server.
+    - production authentication issuer and Google OAuth callback/token encryption are deliberate unfinished security integrations.
+  follow_up:
+    - run deploy/docker-compose.production.yml on target server
+    - configure production JWT issuer or OAuth session exchange
+    - implement Google OAuth callback and encrypted token storage before enabling external sync
+    - archive old Express/tRPC/Drizzle scaffold after runtime parity confirmation
+  rollback_notes: use a git tag or the prior checkpoint before applying server migration on a production database.
+```
