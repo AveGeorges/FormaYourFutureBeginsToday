@@ -1978,3 +1978,125 @@ fixed_ai_command_set:
     - decide scope for outbound Google Calendar projection
   rollback_notes: remove guard only together with an alternative workspace-independent verification request storage design.
 ```
+
+## CHANGE_HISTORY_GOOGLE_OUTBOUND_SCOPE_DEFERRED
+
+```yaml
+- change_id: CHG-20260818-034
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: google_outbound_projection_scope_decision
+  status: deferred
+  change_type: decision
+  summary: explicitly_deferred_outbound_projection_of_internal_calendarevent_to_google_calendar_until_conflict_deletion_and_bidirectional_idempotency_policy_is_designed
+  files_changed:
+    - SERVER_DEPLOYMENT.md
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run: []
+  tests_added: []
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - Google integration is intentionally inbound-import only; a user must not expect newly created internal events to appear in Google Calendar yet.
+  follow_up:
+    - design explicit two-way sync conflict/deletion policy before outbound projection
+    - validate real self-hosted Google OAuth redirect and import
+    - validate self-hosted Docker/Resend topology
+  rollback_notes: remove the documentation decision only if an approved outbound synchronization design is introduced.
+```
+
+## CHANGE_HISTORY_SELF_HOSTED_TOPOLOGY_CONTRACT_SMOKE
+
+```yaml
+- change_id: CHG-20260818-035
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: self_hosted_topology_contract_smoke
+  status: done
+  change_type: test
+  summary: added_docker_daemon_independent_contract_smoke_suite_for_the_declared_self_hosted_compose_topology_and_external_provider_environment_mapping
+  reason: provide_reproducible_local_validation_of_production_compose_service_contracts_when_a_real_docker_host_is_not_available_in_the_build_sandbox
+  files_changed:
+    - backend/tests/test_deployment_contract.py
+    - todo.md
+    - CHANGELOG_AI.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pytest -q tests/test_deployment_contract.py
+      result: passed
+      notes: two topology and environment contract tests passed without Docker daemon
+    - command: ruff check app tests && mypy app
+      result: passed
+      notes: Python lint and strict type checks passed across 71 source files
+  tests_added:
+    - production Compose declares PostgreSQL, Redis, RabbitMQ, Alembic migration gate, FastAPI API, outbox/event workers and Nginx frontend without exposed stateful ports or Express/tRPC runtime
+    - production env template and backend Compose mappings cover signed verification-link base URL plus Google Calendar and Resend environment-only credentials
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - contract smoke parsing does not start containers and cannot prove runtime image build, network healthchecks, PostgreSQL migrations or RabbitMQ/Redis connectivity.
+    - real Google OAuth redirect/import and Resend domain delivery remain explicit self-hosted host validations.
+  follow_up:
+    - run deploy/docker-compose.production.yml on a Docker-capable target host before production launch
+    - validate real Google OAuth redirect/import with configured environment credentials
+    - complete the explicitly pending FastAPI SPA-serving production deployable milestone or revise its deployment contract with user confirmation
+  rollback_notes: delete only the test and documentation history entry if the production compose topology is intentionally replaced.
+```
+
+## CHANGE_HISTORY_SELF_HOSTED_TOPOLOGY_CONTRACT_SMOKE_ADDENDUM
+
+```yaml
+- change_id: CHG-20260818-036
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: self_hosted_topology_contract_smoke_hardening
+  status: done
+  change_type: test
+  summary: extended_the_dockerless_self_hosted_smoke_suite_with_explicit_health_gated_dependencies_and_simulated_google_oauth_resend_delivery_provider_boundaries
+  reason: close_the_initial_contract-suite gaps by proving declared Compose dependency ordering and provider request/response contracts without live credentials, Docker daemon or external network calls
+  files_changed:
+    - backend/tests/test_deployment_contract.py
+    - todo.md
+    - CHANGELOG_AI.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pnpm check && pnpm test && cd backend && ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: TypeScript clean; 5 Vitest tests; Ruff and strict mypy clean; 31 Python tests passed
+  tests_added:
+    - explicit health-gated depends_on contracts for migration, API, outbox worker, event worker and frontend services
+    - simulated Google OAuth authorization-code exchange checks request construction and accepts a provider token response without network access
+    - simulated Resend delivery checks authorization and message payload construction and accepts a provider message ID without network access
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - tests validate configuration and adapter request/response boundaries, not image builds or live container health.
+    - pytest reports pre-existing test-only JWT HMAC key-length and Starlette TestClient deprecation warnings; no quality command failed.
+  follow_up:
+    - execute the documented Docker Compose startup on a real Docker host before production launch
+    - validate real self-hosted Google OAuth redirect/import and Resend verification delivery with production environment variables
+    - implement the separate FastAPI SPA-serving deployment path only if this remains the selected production contract
+  rollback_notes: remove this test addendum together with the specific assertions only if the corresponding Compose or provider contracts are deliberately replaced.
+```

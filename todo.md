@@ -17,7 +17,7 @@
 - [x] Добавить `Idempotency-Key` для каждого mutating command и backend workspace ownership/permissions checks.
 - [x] Реализовать Transactional Outbox, EventBus abstraction и RabbitMQ transport adapter.
 - [x] Добавить Redis для временного состояния, кэша и coordination locks без переноса доменной истины из PostgreSQL.
-- [ ] Реализовать worker для уведомлений и календарной синхронизации с идемпотентной обработкой событий.
+- [x] Реализовать worker для уведомлений и календарной синхронизации с идемпотентной обработкой событий.
 - [x] Создать normalised CalendarEvent и ExternalEventLink для будущей OAuth-интеграции внешнего календаря.
 - [x] Перевести React-клиент с tRPC на versioned REST/BFF contracts без изменения согласованных пользовательских сценариев.
 - [x] Настроить JSON logs, request/correlation IDs, audit trail, Ruff, mypy, pytest, pre-commit и contract tests.
@@ -29,6 +29,7 @@
 - [x] Добавить development onboarding для создания workspace и передачи `X-User-Id` только в FastAPI development mode; production остаётся только через JWT bearer.
 - [ ] Собрать React в FastAPI deployable: FastAPI обслуживает SPA и `/api/v1`, а Express runtime исключён из production path.
 - [ ] Провалидировать self-hosted Docker Compose topology FastAPI API и RabbitMQ/Redis worker processes на машине с Docker перед production запуском.
+- [x] Добавить локальный mock self-hosted topology smoke suite: Compose/env contract, health-gated service dependencies, worker commands и simulated Google/Resend provider paths без Docker daemon.
 - [x] Интегрировать Redis в реальный calendar/AI coordination flow и покрыть lock/cache поведение тестами.
 - [x] Добавить post-commit Redis invalidation BFF overview cache после AI mutating approval, не затрагивая PostgreSQL source-of-truth.
 - [x] Проверить cache invalidation и refresh BFF overview после AI mutation на isolated SQLite/Redis fake fixture.
@@ -57,11 +58,11 @@
 - [x] Выполнить финальный audit active routes/components на оставшиеся user-visible английские строки и уточнить статус русификации по результату.
 - [x] Завершить Google Calendar OAuth callback/token exchange, encrypted token storage, provider adapter и worker sync flow с настройкой только через переменные окружения.
 - [ ] Провалидировать реальный self-hosted Google OAuth redirect/import path с env-only credentials и зафиксировать результат в runbook и техническом статусе.
-- [ ] Реализовать или явно документированно отложить outbound projection новых внутренних CalendarEvent во внешний Google Calendar provider.
+- [x] Реализовать или явно документированно отложить outbound projection новых внутренних CalendarEvent во внешний Google Calendar provider.
 - [x] Добавить mocked integration tests Google Calendar OAuth callback: signed state, code exchange, encrypted token persistence, отказ provider и недействительный state.
 - [x] Зафиксировать OAuth callback token/status/audit изменения в одной database transaction до возврата успешного ответа.
 - [x] Завершить email delivery adapter с конфигурируемым provider API key, delivery attempts и production runbook без хранения секретов в репозитории.
-- [ ] Подготовить исчерпывающий русскоязычный статус backend/frontend, deployment guide и integration setup guide для самостоятельного self-hosted запуска.
+- [x] Подготовить исчерпывающий русскоязычный статус backend/frontend, deployment guide и integration setup guide для самостоятельного self-hosted запуска.
 - [ ] После каждого milestone обновлять CHANGELOG_AI.md с выполненными работами, проверками, рисками и следующими шагами.
 - [x] Добавить self-hosted UserProfile с verified email как источник адреса для внешней email-доставки.
 - [x] Добавить notification preferences и server-side проверки, запрещающие email delivery до подтверждения адреса.

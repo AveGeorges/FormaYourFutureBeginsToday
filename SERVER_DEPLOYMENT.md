@@ -53,6 +53,7 @@ openssl rand -base64 48
 | Переменная | Назначение |
 |---|---|
 | `FORMA_PUBLIC_ORIGIN` | Публичный HTTPS URL, например `https://forma.example.com` |
+| `FORMA_WEB_APP_BASE_URL` | Тот же публичный HTTPS URL; используется только для signed verification links в email |
 | `POSTGRES_*` | Учётные данные единственного доменного хранилища |
 | `RABBITMQ_DEFAULT_*` | Учётные данные брокера событий |
 | `REDIS_PASSWORD` | Пароль временного cache/lock хранилища |
@@ -125,11 +126,17 @@ curl -I https://forma.example.com/api/v1/health
 docker compose --env-file .env -f deploy/docker-compose.production.yml up -d --force-recreate api worker-outbox worker-events
 ```
 
-Текущий adapter уже использует нормализованное внутреннее событие и `ExternalEventLink`; внешний календарь не является источником доменной истины. Перед передачей production credentials реализуйте server-side encrypted token persistence и callback token exchange как отдельный security review.
+Текущий adapter использует signed OAuth state, encrypted token persistence, callback code exchange и provider-backed **inbound import** Google events в нормализованные `CalendarEvent`/`ExternalEventLink` с cursor и worker outcome. Внешний календарь не является источником доменной истины.
+
+> **Явно отложенный scope:** outbound projection новых внутренних `CalendarEvent` в Google Calendar в этой итерации не реализована. Она требует отдельной conflict policy, стратегии удаления/изменения и двусторонней идемпотентности; не включайте её обходными прямыми вызовами из HTTP router. До отдельного milestone Forma импортирует provider events, но не экспортирует внутренние события во внешний календарь.
+
+Перед передачей production credentials обязательно выполните real-host проверку: OAuth redirect, callback, token encryption и import одной тестовой Google event. Это нельзя подтвердить без ваших credentials и публичного HTTPS domain.
 
 ## 7. Email notifications
 
-Для email delivery добавьте `RESEND_API_KEY` и `RESEND_FROM_EMAIL` в `.env`, затем перезапустите API/workers. Без этих настроек in-app notifications и queued records остаются рабочими, но наружная отправка не выполняется. Проверьте, что домен отправителя подтверждён у выбранного провайдера.
+Для email delivery добавьте `RESEND_API_KEY`, `RESEND_FROM_EMAIL` и `FORMA_WEB_APP_BASE_URL` в `.env`, затем перезапустите API/workers. Без этих настроек in-app notifications и queued records остаются рабочими, но наружная отправка не выполняется. Проверьте, что домен отправителя подтверждён у выбранного провайдера.
+
+При первом создании или смене profile email Forma в той же PostgreSQL transaction записывает `EmailVerificationRequested` в outbox. Event worker отправляет через Resend signed link, действующую 24 часа; raw token не попадает в PostgreSQL, API response или RabbitMQ event payload. Проверьте flow на self-hosted host: создайте workspace, обновите profile email, откройте link из письма и убедитесь, что `GET /api/v1/workspaces/profile` показывает `email_verified: true`.
 
 ## 8. Обновление версии
 
@@ -167,7 +174,7 @@ docker compose --env-file .env -f deploy/docker-compose.production.yml stop api 
 | Worker не обрабатывает события | `docker compose ... logs worker-outbox worker-events` | Проверьте RabbitMQ, outbox rows, retry/DLQ и worker receipts |
 | UI отвечает 502 | `curl 127.0.0.1:8080/health`, `systemctl status caddy` | Убедитесь, что `frontend` запущен и Caddy проксирует на 127.0.0.1:8080 |
 | OAuth ошибка | API logs + redirect URI | Сверьте домен, HTTPS и callback URL в Google Cloud Console |
-| Нет email | Logs worker events | Проверьте ключ, подтверждённый sender domain и delivery attempts |
+| Нет verification email | Logs `worker-outbox worker-events` | Проверьте ключ, подтверждённый sender domain, `FORMA_WEB_APP_BASE_URL`, HTTPS доступность domain и worker receipt `verification-email-worker` |
 
 ## 11. Полезные команды
 
