@@ -1186,3 +1186,30 @@ fixed_ai_command_set:
     - connect verified profile to Resend delivery adapter
   rollback_notes: downgrade revision 20260818_0005 before removing self-hosted profile ORM models.
 ```
+
+## CHANGE_HISTORY_SELF_HOSTED_PROFILE_API
+
+```yaml
+- change_id: CHG-20260818-014
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: self_hosted_profile_and_verification_api
+  status: partial
+  change_type: feature
+  summary: implemented_authenticated_profile_update_email_preference_and_single_use_verification_token_contract
+  files_changed:
+    - backend/app/presentation/identity.py
+    - backend/pyproject.toml
+  commands_run:
+    - command: ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: 9 Python tests passed after adding explicit email-validator dependency
+  risks:
+    - issuing token records verification intent but delivery adapter does not yet send the raw token to the profile email.
+  follow_up:
+    - add profile endpoint integration tests
+    - wire issued token to Resend verification message and delivery attempts
+    - block notification email when profile is missing, unverified or opted out
+  rollback_notes: remove profile routes together with migration 20260818_0005 if self-hosted email profile is removed.
+```
