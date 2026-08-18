@@ -1074,3 +1074,31 @@ fixed_ai_command_set:
     - encrypt returned access and refresh tokens in CalendarConnection
   rollback_notes: restore the prior state construction only if replacing the auth state mechanism with server-side Redis state storage.
 ```
+
+## CHANGE_HISTORY_GOOGLE_OAUTH_CALLBACK
+
+```yaml
+- change_id: CHG-20260818-010
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: google_oauth_callback_and_encrypted_tokens
+  status: partial
+  change_type: feature
+  summary: implemented_signed_state_callback_server_side_code_exchange_and_encrypted_calendar_token_persistence
+  files_changed:
+    - backend/app/presentation/integrations.py
+    - backend/app/modules/integrations/infrastructure/google_calendar.py
+  commands_run:
+    - command: ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: 9 Python tests passed
+  risks:
+    - callback needs mocked provider integration tests and a deployed HTTPS callback URL before production activation.
+    - CalendarProvider list/import/export and worker sync cursor are still unimplemented.
+  follow_up:
+    - add callback token persistence/invalid state tests
+    - implement Google Calendar event import/export and provider-backed sync worker
+    - add end-to-end OAuth validation on a Docker host with real Google client credentials
+  rollback_notes: revert callback router and provider exchange changes together if changing OAuth library/provider architecture.
+```

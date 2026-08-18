@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import jwt
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +16,7 @@ from app.core.request_context import RequestContext, get_request_context
 from app.modules.identity.application.permissions import require_workspace_access
 from app.modules.integrations.infrastructure.google_calendar import GoogleCalendarProvider
 from app.modules.integrations.infrastructure.models import CalendarConnection
+from app.modules.integrations.infrastructure.token_cipher import encrypt_token
 
 router = APIRouter()
 
@@ -34,6 +35,22 @@ def _oauth_state(connection: CalendarConnection) -> str:
         settings.jwt_secret,
         algorithm=settings.jwt_algorithm,
     )
+
+
+def _decode_oauth_state(state: str) -> dict[str, str]:
+    settings = get_settings()
+    try:
+        payload = jwt.decode(state, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    except jwt.PyJWTError as exc:
+        raise DomainError(
+            "CALENDAR_OAUTH_STATE_INVALID", "Google OAuth state is invalid or expired."
+        ) from exc
+    required = ("connection_id", "workspace_id", "owner_id")
+    if payload.get("purpose") != "google_calendar_oauth" or any(
+        not isinstance(payload.get(key), str) for key in required
+    ):
+        raise DomainError("CALENDAR_OAUTH_STATE_INVALID", "Google OAuth state has invalid claims.")
+    return {key: payload[key] for key in required}
 
 
 class CalendarConnectRequest(BaseModel):
@@ -98,6 +115,50 @@ async def connect_calendar(
             operation=operation,
         )
     )
+
+
+@router.get("/integrations/calendar/google/callback")
+async def google_calendar_callback(
+    code: str | None = Query(default=None),
+    state: str | None = Query(default=None),
+    error: str | None = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, str]:
+    if error:
+        raise DomainError(
+            "CALENDAR_OAUTH_DENIED", f"Google Calendar authorization failed: {error}."
+        )
+    if not code or not state:
+        raise DomainError(
+            "CALENDAR_OAUTH_CALLBACK_INVALID", "OAuth callback requires code and state."
+        )
+    claims = _decode_oauth_state(state)
+    connection = await session.scalar(
+        select(CalendarConnection).where(
+            CalendarConnection.id == UUID(claims["connection_id"]),
+            CalendarConnection.workspace_id == UUID(claims["workspace_id"]),
+            CalendarConnection.owner_id == UUID(claims["owner_id"]),
+            CalendarConnection.provider == "google_calendar",
+        )
+    )
+    if connection is None:
+        raise DomainError("CALENDAR_CONNECTION_NOT_FOUND", "Calendar connection no longer exists.")
+    access_token, refresh_token = await GoogleCalendarProvider().exchange_code(code)
+    connection.encrypted_access_token = encrypt_token(access_token)
+    if refresh_token:
+        connection.encrypted_refresh_token = encrypt_token(refresh_token)
+    connection.status = "connected"
+    record_audit(
+        session,
+        workspace_id=connection.workspace_id,
+        actor_id=connection.owner_id,
+        action="CalendarOAuthConnected",
+        aggregate_type="CalendarConnection",
+        aggregate_id=connection.id,
+        correlation_id="google-calendar-oauth-callback",
+        details={"provider": connection.provider},
+    )
+    return {"connection_id": str(connection.id), "status": connection.status}
 
 
 @router.post("/integrations/calendar/sync")
