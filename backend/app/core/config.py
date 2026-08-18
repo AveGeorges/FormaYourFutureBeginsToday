@@ -20,7 +20,11 @@ class Settings(BaseSettings):
     )
     jwt_algorithm: str = "HS256"
     google_calendar_client_id: str = ""
+    google_calendar_client_secret: str = ""
     google_calendar_redirect_uri: str = ""
+    integration_encryption_key: str = ""
+    resend_api_key: str = ""
+    resend_from_email: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:

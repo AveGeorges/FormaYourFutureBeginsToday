@@ -57,8 +57,9 @@ openssl rand -base64 48
 | `RABBITMQ_DEFAULT_*` | Учётные данные брокера событий |
 | `REDIS_PASSWORD` | Пароль временного cache/lock хранилища |
 | `JWT_SECRET` | Ключ верификации production Bearer JWT; минимум 32 случайных байта |
-| `GOOGLE_CALENDAR_*` | Нужны только для включения Google Calendar OAuth |
-| `RESEND_API_KEY`, `EMAIL_FROM` | Нужны только для реальной email-доставки |
+| `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, `GOOGLE_CALENDAR_REDIRECT_URI` | Параметры OAuth web client для Google Calendar |
+| `INTEGRATION_ENCRYPTION_KEY` | Отдельный 32-byte URL-safe base64 ключ шифрования refresh/access tokens; не используйте для него `JWT_SECRET` |
+| `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | Параметры реальной email-доставки через Resend |
 
 ## 3. Первый запуск
 
@@ -117,7 +118,7 @@ curl -I https://forma.example.com/api/v1/health
 
 1. Создайте OAuth 2.0 Web Client в Google Cloud Console.
 2. Добавьте redirect URI: `https://forma.example.com/api/v1/integrations/calendar/google/callback`.
-3. Добавьте `GOOGLE_CALENDAR_CLIENT_ID` и `GOOGLE_CALENDAR_REDIRECT_URI` в `.env`.
+3. Добавьте `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, `GOOGLE_CALENDAR_REDIRECT_URI` и независимый `INTEGRATION_ENCRYPTION_KEY` в `.env`.
 4. Перезапустите только API и workers:
 
 ```bash
@@ -128,7 +129,7 @@ docker compose --env-file .env -f deploy/docker-compose.production.yml up -d --f
 
 ## 7. Email notifications
 
-Для email delivery добавьте `RESEND_API_KEY` и `EMAIL_FROM` в `.env`, затем перезапустите API/workers. Без этих настроек in-app notifications и queued records остаются рабочими, но наружная отправка не выполняется. Проверьте, что домен отправителя подтверждён у выбранного провайдера.
+Для email delivery добавьте `RESEND_API_KEY` и `RESEND_FROM_EMAIL` в `.env`, затем перезапустите API/workers. Без этих настроек in-app notifications и queued records остаются рабочими, но наружная отправка не выполняется. Проверьте, что домен отправителя подтверждён у выбранного провайдера.
 
 ## 8. Обновление версии
 
