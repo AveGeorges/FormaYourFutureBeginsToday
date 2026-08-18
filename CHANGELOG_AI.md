@@ -1017,3 +1017,34 @@ fixed_ai_command_set:
     - extend Russian self-hosted deployment and integration handoff
   rollback_notes: revert the Russian UI string changes if product localization policy changes.
 ```
+
+## CHANGE_HISTORY_INTEGRATION_SECURITY_FOUNDATION
+
+```yaml
+- change_id: CHG-20260818-008
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: external_integration_security_foundation
+  status: partial
+  change_type: security
+  summary: added_env_only_google_email_configuration_contract_and_fernet_token_encryption_boundary
+  files_changed:
+    - backend/app/core/config.py
+    - backend/app/modules/integrations/infrastructure/token_cipher.py
+    - backend/pyproject.toml
+    - backend/tests/test_contracts.py
+    - .env.production.example
+    - deploy/docker-compose.production.yml
+    - SERVER_DEPLOYMENT.md
+  commands_run:
+    - command: ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: 8 Python tests passed
+  risks:
+    - callback/token exchange and provider API sync are not implemented yet; encrypted storage primitive alone does not enable OAuth.
+  follow_up:
+    - implement Google authorization callback and code exchange
+    - implement provider-backed import/export worker and email delivery adapter
+  rollback_notes: remove token cipher and env keys together if a future secret manager replaces Fernet-at-rest encryption.
+```

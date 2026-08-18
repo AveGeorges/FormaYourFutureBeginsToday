@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from uuid import uuid4
 
 import jwt
@@ -11,6 +12,7 @@ from app.core.request_context import get_request_context
 from app.events.outbox import OutboxEvent, mark_publish_failure
 from app.main import create_app
 from app.modules.ai_planning.domain import ALLOWED_AI_COMMANDS
+from app.modules.integrations.infrastructure import token_cipher
 
 
 def test_health_contract() -> None:
@@ -73,3 +75,15 @@ def test_outbox_event_moves_to_dead_letter_after_retry_limit() -> None:
 
     assert event.failed_attempts == 5
     assert event.is_dead_lettered is True
+
+
+def test_integration_token_cipher_requires_valid_environment_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        token_cipher,
+        "get_settings",
+        lambda: SimpleNamespace(integration_encryption_key=""),
+    )
+    with pytest.raises(Exception, match="Integration token encryption is not configured"):
+        token_cipher.encrypt_token("secret-token")
