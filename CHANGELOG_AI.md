@@ -1518,3 +1518,52 @@ fixed_ai_command_set:
     - implement transaction-safe verification email delivery
   rollback_notes: remove explicit callback commit only together with the callback implementation; no schema rollback is needed.
 ```
+
+## CHANGE_HISTORY_GOOGLE_PROVIDER_SYNC_IMPORT
+
+```yaml
+- change_id: CHG-20260818-023
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: google_provider_backed_sync_import
+  status: done
+  change_type: feature
+  summary: implemented_google_calendar_page_import_with_encrypted_token_boundary_outbox_routing_normalized_upsert_cursor_and_persisted_outcomes
+  files_changed:
+    - backend/app/modules/integrations/domain.py
+    - backend/app/modules/integrations/infrastructure/google_calendar.py
+    - backend/app/presentation/integrations.py
+    - backend/app/workers/calendar_sync_worker.py
+    - backend/app/workers/runner.py
+    - backend/tests/test_workers.py
+    - TECHNICAL_STATUS_RU.md
+    - todo.md
+  contracts_changed:
+    api: []
+    events:
+      - CalendarSyncRequested
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: 17 Python tests passed; Ruff and strict mypy clean across 69 source files
+  tests_added:
+    - provider sync imports a Google page into normalized CalendarEvent and ExternalEventLink records
+    - sync cursor, success receipt and duplicate receipt behavior persist correctly
+    - provider failure persists sync_failed and failure receipt before propagation
+    - runner routes CalendarSyncRequested to provider worker without creating user notification
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - Google API exchange/import uses a mocked provider in tests; production requires redirect URI and API credentials validation on the self-hosted host.
+    - current scope imports Google events; outbound projection of newly created internal events is deferred.
+  follow_up:
+    - validate real Docker Compose topology and Google OAuth import path on a self-hosted host
+    - integrate Redis locks/cache into calendar and AI coordination flow
+    - implement transaction-safe verification email delivery
+  rollback_notes: revert CalendarSyncRequested outbox routing and provider worker import together; existing internal CalendarEvent records remain valid.
+```

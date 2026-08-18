@@ -13,11 +13,17 @@ class ExternalEvent:
     etag: str | None
 
 
+@dataclass(frozen=True)
+class CalendarSyncPage:
+    events: list[ExternalEvent]
+    next_sync_cursor: str | None
+
+
 class CalendarProvider(Protocol):
     provider_name: str
 
     def authorization_url(self, state: str) -> str: ...
 
     async def list_events(
-        self, connection_id: str, sync_cursor: str | None
-    ) -> list[ExternalEvent]: ...
+        self, access_token: str, sync_cursor: str | None
+    ) -> CalendarSyncPage: ...

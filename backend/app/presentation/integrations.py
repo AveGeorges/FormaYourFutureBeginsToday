@@ -13,6 +13,8 @@ from app.core.database import get_session
 from app.core.errors import DomainError
 from app.core.idempotency import execute_idempotent, require_idempotency_key
 from app.core.request_context import RequestContext, get_request_context
+from app.events.contracts import EventEnvelope
+from app.events.outbox import record_outbox_event
 from app.modules.identity.application.permissions import require_workspace_access
 from app.modules.integrations.infrastructure.google_calendar import GoogleCalendarProvider
 from app.modules.integrations.infrastructure.models import CalendarConnection
@@ -180,9 +182,33 @@ async def sync_calendar(
         raise DomainError(
             "CALENDAR_CONNECTION_NOT_FOUND", "Calendar connection does not exist in this workspace."
         )
+    if connection.status not in {"connected", "sync_failed"}:
+        raise DomainError(
+            "CALENDAR_CONNECTION_NOT_READY", "Calendar connection must be connected before sync."
+        )
 
     async def operation() -> dict[str, str]:
         connection.status = "sync_queued"
+        record_audit(
+            session,
+            workspace_id=connection.workspace_id,
+            actor_id=context.user_id,
+            action="CalendarSyncRequested",
+            aggregate_type="CalendarConnection",
+            aggregate_id=connection.id,
+            correlation_id=context.correlation_id,
+            details={"provider": connection.provider},
+        )
+        record_outbox_event(
+            session,
+            EventEnvelope.create(
+                event_type="CalendarSyncRequested",
+                aggregate_id=connection.id,
+                workspace_id=connection.workspace_id,
+                correlation_id=context.correlation_id,
+                payload={"provider": connection.provider},
+            ),
+        )
         return {"connection_id": str(connection.id), "status": connection.status}
 
     return await execute_idempotent(

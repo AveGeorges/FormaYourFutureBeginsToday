@@ -30,21 +30,26 @@
 - [ ] Собрать React в FastAPI deployable: FastAPI обслуживает SPA и `/api/v1`, а Express runtime исключён из production path.
 - [ ] Провалидировать self-hosted Docker Compose topology FastAPI API и RabbitMQ/Redis worker processes на машине с Docker перед production запуском.
 - [ ] Интегрировать Redis в реальный calendar/AI coordination flow и покрыть lock/cache поведение тестами.
-- [ ] Реализовать notification worker и calendar sync worker без заглушек: статус обработки, идемпотентность и тесты.
+- [x] Реализовать notification worker и calendar sync worker без заглушек: статус обработки, идемпотентность и тесты.
 - [x] Расширить audit trail на ключевые mutating commands workspaces, planning, tasks, calendar, time и AI approval.
 - [ ] Вынести cross-context ORM checks из FastAPI routers в application ports, чтобы bounded contexts не импортировали ORM-модели друг друга.
-- [ ] Реализовать один внешний CalendarProvider OAuth adapter, encrypted token storage и import flow через ExternalEventLink.
+- [x] Реализовать один внешний CalendarProvider OAuth adapter, encrypted token storage и import flow через ExternalEventLink.
 - [x] Подключить базовую email delivery adapter и delivery attempts для deadline/reminder/AI approval notifications.
 - [x] Добавить retry/backoff и dead-letter queue для RabbitMQ consumers с тестами повторной доставки.
 - [ ] Довести календарный client drill-down до Year → Quarter → Month → Week → Day с breadcrumb и Back через REST/BFF data.
-- [ ] Завершить Google Calendar OAuth callback/token exchange и encrypted token storage перед production-включением OAuth runbook.
+- [x] Завершить Google Calendar OAuth callback/token exchange и encrypted token storage перед production-включением OAuth runbook.
 - [x] Исправить устаревшие числовые преобразования ID в React task/calendar/time формах на UUID-совместимую передачу REST идентификаторов.
-- [ ] Реализовать provider-backed calendar sync worker с success/failed статусами и sync cursor; текущий handler только ставит link в очередь.
+- [x] Реализовать provider-backed calendar sync worker с success/failed статусами и sync cursor; текущий handler только ставит link в очередь.
+- [x] Публиковать факт `CalendarSyncRequested` через Transactional Outbox и route его в calendar provider sync worker.
+- [x] Реализовать Google Calendar events page adapter с encrypted access token, sync cursor и provider error boundary.
+- [x] Импортировать provider events в нормализованные CalendarEvent и ExternalEventLink через idempotent upsert с persisted sync outcome tests.
 - [x] Добавить integration/e2e тесты `runner.dispatch_event` для notification, calendar link queueing, duplicate delivery и failure paths.
 - [x] Перевести весь активный пользовательский интерфейс Forma на русский язык, включая onboarding, dashboard, календарь, формы, AI и сообщения состояний.
 - [x] Заменить user-visible AI command IDs в proposal cards на русскоязычные labels, сохранив фиксированные backend codes только во внутренних контрактах.
 - [x] Выполнить финальный audit active routes/components на оставшиеся user-visible английские строки и уточнить статус русификации по результату.
-- [ ] Завершить Google Calendar OAuth callback/token exchange, encrypted token storage, provider adapter и worker sync flow с настройкой только через переменные окружения.
+- [x] Завершить Google Calendar OAuth callback/token exchange, encrypted token storage, provider adapter и worker sync flow с настройкой только через переменные окружения.
+- [ ] Провалидировать реальный self-hosted Google OAuth redirect/import path с env-only credentials и зафиксировать результат в runbook и техническом статусе.
+- [ ] Реализовать или явно документированно отложить outbound projection новых внутренних CalendarEvent во внешний Google Calendar provider.
 - [x] Добавить mocked integration tests Google Calendar OAuth callback: signed state, code exchange, encrypted token persistence, отказ provider и недействительный state.
 - [x] Зафиксировать OAuth callback token/status/audit изменения в одной database transaction до возврата успешного ответа.
 - [x] Завершить email delivery adapter с конфигурируемым provider API key, delivery attempts и production runbook без хранения секретов в репозитории.

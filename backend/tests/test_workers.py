@@ -13,6 +13,8 @@ from app.core.database import Base
 from app.core.errors import DomainError
 from app.events.contracts import EventEnvelope
 from app.modules.identity.infrastructure.models import UserProfile, Workspace
+from app.modules.integrations.domain import CalendarSyncPage, ExternalEvent
+from app.modules.integrations.infrastructure.models import CalendarConnection
 from app.modules.notifications.infrastructure.models import (
     EmailDeliveryAttempt,
     Notification,
@@ -140,6 +142,18 @@ async def test_worker_handlers_persist_once_and_deduplicate_by_consumer(
         )
     )
 
+    provider_sync = AsyncMock(return_value=True)
+    monkeypatch.setattr(runner, "sync_calendar_connection", provider_sync)
+    sync_request = EventEnvelope.create(
+        event_type="CalendarSyncRequested",
+        aggregate_id=uuid4(),
+        workspace_id=workspace_id,
+        correlation_id="runner-provider-sync-test",
+        payload={"provider": "google_calendar"},
+    )
+    await runner.dispatch_event(sync_request)
+    provider_sync.assert_awaited_once_with(sync_request, sync_request.aggregate_id)
+
     async with session_factory() as session:
         notification_count = await session.scalar(select(func.count()).select_from(Notification))
         receipt_count = await session.scalar(select(func.count()).select_from(WorkerReceipt))
@@ -262,6 +276,156 @@ async def test_email_delivery_worker_persists_all_profile_gated_delivery_states(
     ]
     assert attempts[0].provider_message_id == "resend-message-1"
     assert attempts[1].error_message == "Resend is unavailable"
+
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_provider_calendar_sync_imports_events_persists_cursor_and_deduplicates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_async_engine("sqlite+aiosqlite://")
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    monkeypatch.setattr(calendar_sync_worker, "SessionLocal", session_factory)
+    monkeypatch.setattr(calendar_sync_worker, "decrypt_token", lambda _: "google-access-token")
+    list_events = AsyncMock(
+        return_value=CalendarSyncPage(
+            events=[
+                ExternalEvent(
+                    external_event_id="google-event-1",
+                    calendar_id="primary",
+                    title="Импортированная встреча",
+                    starts_at=datetime(2026, 8, 18, 9, 0, tzinfo=UTC),
+                    ends_at=datetime(2026, 8, 18, 10, 0, tzinfo=UTC),
+                    etag="etag-1",
+                )
+            ],
+            next_sync_cursor="google-sync-cursor-2",
+        )
+    )
+    monkeypatch.setattr(calendar_sync_worker.GoogleCalendarProvider, "list_events", list_events)
+
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+    workspace_id = uuid4()
+    owner_id = uuid4()
+    connection_id = uuid4()
+    async with session_factory() as session:
+        session.add(Workspace(id=workspace_id, owner_id=owner_id, name="Provider sync space"))
+        session.add(
+            CalendarConnection(
+                id=connection_id,
+                workspace_id=workspace_id,
+                owner_id=owner_id,
+                provider="google_calendar",
+                encrypted_access_token="encrypted-access-token",
+                status="sync_queued",
+            )
+        )
+        await session.commit()
+
+    event = EventEnvelope.create(
+        event_type="CalendarSyncRequested",
+        aggregate_id=connection_id,
+        workspace_id=workspace_id,
+        correlation_id="provider-sync-test",
+        payload={"provider": "google_calendar"},
+    )
+
+    assert await calendar_sync_worker.sync_calendar_connection(event, connection_id) is True
+    assert await calendar_sync_worker.sync_calendar_connection(event, connection_id) is False
+    list_events.assert_awaited_once_with("google-access-token", None)
+
+    async with session_factory() as session:
+        connection = await session.get(CalendarConnection, connection_id)
+        calendars = list((await session.scalars(select(Calendar))).all())
+        imported_events = list((await session.scalars(select(CalendarEvent))).all())
+        links = list((await session.scalars(select(ExternalEventLink))).all())
+        receipts = list(
+            (
+                await session.scalars(
+                    select(WorkerReceipt).where(
+                        WorkerReceipt.consumer_name == "calendar-provider-sync-worker"
+                    )
+                )
+            ).all()
+        )
+
+    assert connection is not None
+    assert connection.status == "connected"
+    assert connection.sync_cursor == "google-sync-cursor-2"
+    assert [(calendar.provider, calendar.name) for calendar in calendars] == [
+        ("google_calendar", "Google Calendar")
+    ]
+    assert [(item.title, item.status) for item in imported_events] == [
+        ("Импортированная встреча", "scheduled")
+    ]
+    assert [(link.external_event_id, link.sync_state, link.etag) for link in links] == [
+        ("google-event-1", "synced", "etag-1")
+    ]
+    assert [receipt.status for receipt in receipts] == ["synced"]
+
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_provider_calendar_sync_persists_failed_state_before_raising(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_async_engine("sqlite+aiosqlite://")
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    monkeypatch.setattr(calendar_sync_worker, "SessionLocal", session_factory)
+    monkeypatch.setattr(calendar_sync_worker, "decrypt_token", lambda _: "google-access-token")
+    monkeypatch.setattr(
+        calendar_sync_worker.GoogleCalendarProvider,
+        "list_events",
+        AsyncMock(side_effect=DomainError("CALENDAR_SYNC_FAILED", "Google import failed")),
+    )
+
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+    workspace_id = uuid4()
+    owner_id = uuid4()
+    connection_id = uuid4()
+    async with session_factory() as session:
+        session.add(Workspace(id=workspace_id, owner_id=owner_id, name="Provider failure space"))
+        session.add(
+            CalendarConnection(
+                id=connection_id,
+                workspace_id=workspace_id,
+                owner_id=owner_id,
+                provider="google_calendar",
+                encrypted_access_token="encrypted-access-token",
+                status="sync_queued",
+            )
+        )
+        await session.commit()
+
+    event = EventEnvelope.create(
+        event_type="CalendarSyncRequested",
+        aggregate_id=connection_id,
+        workspace_id=workspace_id,
+        correlation_id="provider-sync-failure-test",
+        payload={"provider": "google_calendar"},
+    )
+    with pytest.raises(DomainError, match="Google import failed"):
+        await calendar_sync_worker.sync_calendar_connection(event, connection_id)
+
+    async with session_factory() as session:
+        connection = await session.get(CalendarConnection, connection_id)
+        receipt = await session.scalar(
+            select(WorkerReceipt).where(
+                WorkerReceipt.consumer_name == "calendar-provider-sync-worker",
+                WorkerReceipt.event_id == event.event_id,
+            )
+        )
+
+    assert connection is not None
+    assert connection.status == "sync_failed"
+    assert receipt is not None
+    assert receipt.status == "failed"
 
     await engine.dispose()
 

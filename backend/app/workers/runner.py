@@ -12,7 +12,7 @@ from app.core.database import SessionLocal
 from app.events.contracts import EventEnvelope
 from app.modules.identity.infrastructure.models import Workspace
 from app.modules.scheduling.infrastructure.models import ExternalEventLink
-from app.workers.calendar_sync_worker import mark_external_event_for_sync
+from app.workers.calendar_sync_worker import mark_external_event_for_sync, sync_calendar_connection
 from app.workers.notification_worker import handle_notification_event
 
 
@@ -37,7 +37,8 @@ async def dispatch_event(event: EventEnvelope) -> None:
         )
         if workspace is None:
             return
-        await handle_notification_event(event, workspace.owner_id)
+        if event.event_type != "CalendarSyncRequested":
+            await handle_notification_event(event, workspace.owner_id)
         if event.event_type == "CalendarEventScheduled":
             links = await session.scalars(
                 select(ExternalEventLink).where(
@@ -46,6 +47,8 @@ async def dispatch_event(event: EventEnvelope) -> None:
             )
             for link in links:
                 await mark_external_event_for_sync(event, link.id)
+        elif event.event_type == "CalendarSyncRequested":
+            await sync_calendar_connection(event, event.aggregate_id)
 
 
 async def process_message(message: AbstractIncomingMessage) -> None:
