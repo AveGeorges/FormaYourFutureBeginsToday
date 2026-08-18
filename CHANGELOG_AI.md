@@ -1241,7 +1241,6 @@ fixed_ai_command_set:
 ```
 
 ## CHANGE_HISTORY_VERIFIED_PROFILE_DELIVERY_GATE
-
 ```yaml
 - change_id: CHG-20260818-016
   created_at: 2026-08-18T00:00:00Z
@@ -1270,4 +1269,130 @@ fixed_ai_command_set:
     - route eligible notification IDs to delivery worker without compromising receipt idempotency
     - route verification token to a dedicated email template
   rollback_notes: remove delivery worker service before removing EmailDeliveryAttempt migration.
+```
+
+## CHANGE_HISTORY_ACTIVE_EMAIL_ORCHESTRATION
+
+```yaml
+- change_id: CHG-20260818-017
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: active_notification_email_orchestration
+  status: done
+  change_type: feature
+  summary: committed_in_app_notifications_now_trigger_detached_verified_profile_email_delivery_with_mocked_state_coverage
+  files_changed:
+    - backend/app/workers/notification_worker.py
+    - backend/tests/test_workers.py
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: 10 tests passed; Ruff and strict mypy clean across 69 source files
+  tests_added:
+    - notification worker starts detached delivery only after the in-app notification and worker receipt commit
+    - delivered state persists the Resend provider message identifier
+    - failed state persists the provider error without changing in-app delivery
+    - skipped_missing_profile state is covered
+    - skipped_unverified state is covered
+    - skipped_opt_out state is covered
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - unexpected failures inside detached delivery are logged and do not reject the already acknowledged RabbitMQ event.
+    - provider-backed verification email messages remain a separate, unimplemented flow.
+  follow_up:
+    - add mocked Google Calendar callback/token exchange integration tests
+    - implement provider-backed calendar sync state transitions and cursor
+    - complete remaining Russian UI localization
+  rollback_notes: remove post-commit task scheduling before removing the existing delivery worker and persisted attempts schema.
+```
+
+## CHANGE_HISTORY_EMAIL_DELIVERY_CONTENT_AND_RUNBOOK
+
+```yaml
+- change_id: CHG-20260818-018
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: localized_email_content_and_runbook_sync
+  status: partial
+  change_type: feature
+  summary: replaced_raw_notification_payload_emails_with_russian_event_templates_and_synchronized_self_hosted_email_status_docs
+  files_changed:
+    - backend/app/workers/email_delivery_worker.py
+    - backend/tests/test_workers.py
+    - SELF_HOSTED_EMAIL_PROFILE_SETUP_RU.md
+    - TECHNICAL_STATUS_RU.md
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pnpm check && pnpm test && ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: TypeScript check, 2 Vitest tests and 10 Python tests passed; Ruff and strict mypy clean
+  tests_added:
+    - TaskDueSoon email must use dedicated Russian deadline content instead of fallback or serialized payload
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - email event templates exist for TaskDueSoon and common task/calendar/AI events, but reminder scheduling does not yet emit these event types.
+    - verification email remains intentionally deferred until a transaction-safe implementation is designed.
+  follow_up:
+    - implement transaction-safe verification email through outbox or signed confirmation link
+    - complete Russian UI localization and notification BFF presentation copy
+    - validate real Resend configuration on the self-hosted Docker topology
+  rollback_notes: revert isolated template function and documentation statements; no schema or API contract rollback is required.
+```
+
+## CHANGE_HISTORY_REMINDER_TEMPLATE_COVERAGE
+
+```yaml
+- change_id: CHG-20260818-019
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: reminder_template_test_coverage
+  status: done
+  change_type: test
+  summary: added_localized_non_payload_template_contracts_for_task_and_calendar_reminder_event_types
+  files_changed:
+    - backend/tests/test_workers.py
+    - todo.md
+  contracts_changed:
+    api: []
+    events: []
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: pnpm check && pnpm test && ruff check app tests && mypy app && pytest -q
+      result: passed
+      notes: 2 Vitest tests and 12 Python tests passed; Ruff and strict mypy clean
+  tests_added:
+    - TaskReminder has dedicated Russian subject/body and omits raw payload data
+    - CalendarEventReminder has dedicated Russian subject/body and omits raw payload data
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - reminder event templates are ready, while reminder scheduling and event emission remain a separate product capability.
+  follow_up:
+    - implement transaction-safe verification email flow
+    - complete Russian UI localization and notification BFF presentation copy
+    - validate deployment on a real Docker host
+  rollback_notes: remove only isolated tests; no runtime schema or API rollback required.
 ```

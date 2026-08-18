@@ -1,7 +1,7 @@
 # Forma — технический статус первой итерации
 
 **Дата:** 18 августа 2026 года.  
-**Статус:** self-hosted FastAPI core готов; внешние OAuth/email интеграции имеют каркас, но ещё не готовы к включению в production.
+**Статус:** self-hosted FastAPI core готов; active product-notification email flow реализован с verified-profile gate, а Google Calendar и verification-email flow ещё не готовы к production-включению.
 
 > Основной архитектурный контракт не менялся: Python/FastAPI, PostgreSQL, Redis, RabbitMQ, DDD modular monolith, Transactional Outbox и API `/api/v1` остаются обязательной основой Forma.
 
@@ -16,7 +16,8 @@ Backend находится в `backend/app` и является активным
 | Задачи и время | Tasks, subtasks, priority, status, estimate, deadlines, manual time entries и timer start/stop | REST API, audit events, linked task/action/milestone checks |
 | Календарь | Внутренние typed calendars, events, reschedule и связь с задачами/actions | normalized `CalendarEvent`, `ExternalEventLink` boundary |
 | AI | Только `CreateGoal`, `CreateRoadmap`, `CreateTask`, `SuggestCalendarSlots`, `ProjectTaskToCalendar`; preview + явное approval | allow-list, AI plan proposals, idempotent apply, audit |
-| Асинхронность | Transactional Outbox, RabbitMQ EventBus adapter, worker receipts, retry/DLQ topology | outbox publisher, background worker, idempotent consumer receipts |
+| Асинхронность | Transactional Outbox, RabbitMQ EventBus adapter, worker receipts, retry/DLQ topology и detached email delivery | outbox publisher, background worker, idempotent consumer receipts, post-commit email task |
+| Email notifications | Product notifications после in-app commit для verified и opted-in профилей | Resend env-only adapter, `EmailDeliveryAttempt`, persisted provider result и Russian templates |
 | Наблюдаемость | Request/correlation IDs, structured JSON logs, audit trail | middleware, audit records, domain events |
 | Безопасность | JWT bearer adapter для production и development-only `X-User-Id` fallback | request context, environment-gated development path |
 
@@ -34,7 +35,7 @@ Backend находится в `backend/app` и является активным
 
 ### Проверки backend
 
-Полный изолированный REST scenario прошёл на временной SQLite базе: `workspace → dream → goal → roadmap → milestone → action → task → calendar event → time entry → BFF`. Это **не** заменяет production-проверку PostgreSQL/Redis/RabbitMQ в Docker Compose. Python quality gate проходит: Ruff, mypy и 7 pytest tests, включая worker dispatcher success, duplicate delivery и failure → reject without requeue.
+Полный изолированный REST scenario прошёл на временной SQLite базе: `workspace → dream → goal → roadmap → milestone → action → task → calendar event → time entry → BFF`. Это **не** заменяет production-проверку PostgreSQL/Redis/RabbitMQ в Docker Compose. Python quality gate проходит: Ruff, strict mypy и 10 pytest tests, включая worker dispatcher success, duplicate delivery, failure → reject without requeue, detached email orchestration и все delivery states (`delivered`, `failed`, `skipped_missing_profile`, `skipped_unverified`, `skipped_opt_out`).
 
 ## 2. Frontend: что готово
 
@@ -57,13 +58,13 @@ React 19/Vite клиент использует TanStack Query и REST client `c
 
 | Интеграция | Состояние | Что уже есть | Что необходимо завершить до включения |
 |---|---|---|---|
-| Google Calendar | Foundation | OAuth start URL, `CalendarConnection`, normalized external link boundary, queued sync state | callback, code→token exchange, encrypted token storage, provider API import/export, cursor/success/failed state |
-| Email | Foundation | Notification records, in-app delivery, queued preparation | provider adapter, API key env, delivery attempts/retries, production send test |
+| Google Calendar | Partial | OAuth start URL, signed state, callback, code→token exchange, encrypted token storage и queued external link state | mocked callback tests, provider API import/export, cursor/success/failed sync state |
+| Email | Partial | in-app notification, active post-commit Resend delivery, verified profile gate, opt-out gate, `EmailDeliveryAttempt`, mocked state tests | transaction-safe verification email flow, real server integration test, operational retry policy for failed provider requests |
 | RabbitMQ | Production topology готова | EventBus adapter, outbox publisher, worker, DLQ/retry config | запуск и проверка на Docker host |
 | Redis | Foundation | cache/lock adapter и configuration | calendar/AI coordination usage и lock/cache integration tests |
 | JWT | Adapter готов | bearer token validation и development fallback | реальный issuer/session exchange и production environment setup |
 
-Следовательно, **секреты действительно можно и нужно будет задать только через переменные окружения на вашем сервере**, но Google Calendar и email ещё нельзя считать полностью готовыми: их реальная callback/token/provider логика должна быть реализована до production включения. Я не буду отмечать эти задачи завершёнными до наличия этой реализации и тестов.
+Следовательно, **секреты действительно можно и нужно будет задать только через переменные окружения на вашем сервере**. Product-notification email flow уже реализован, но остаётся неполным, пока нет безопасной отправки verification email; Google Calendar также остаётся неполным, пока нет provider-backed sync и callback integration tests. Эти ограничения явно сохранены в `todo.md` и `CHANGELOG_AI.md`.
 
 ## 4. Deployment готовность
 
@@ -75,7 +76,7 @@ Production topology разделяет static React build и FastAPI API: Nginx 
 
 1. Закончить русификацию всех active user-visible строк и проверить browser scenarios.
 2. Реализовать Google OAuth callback, token encryption, provider-backed sync и статусы обработки.
-3. Реализовать email provider adapter и delivery attempts.
+3. Реализовать transaction-safe отправку verification email без хранения raw token и проверить её на реальном provider sandbox.
 4. Проверить `deploy/docker-compose.production.yml` на сервере с Docker, PostgreSQL, Redis и RabbitMQ.
 5. Подключить production JWT issuer/session exchange и заполнить переменные окружения по runbook.
 

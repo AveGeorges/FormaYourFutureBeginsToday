@@ -2,7 +2,7 @@
 
 Этот документ описывает выбранную для Forma модель: **адрес получателя хранится в self-hosted профиле пользователя**, а не зависит от внешнего JWT issuer. Благодаря этому система уведомлений имеет собственный источник правды для адреса и пользовательского согласия на email-рассылку.
 
-> В текущем checkpoint готовы схема PostgreSQL, REST contract профиля, одноразовые verification tokens и настройки окружения для Resend. Фактическая отправка verification message и product notifications через Resend ещё подключается следующим шагом; не включайте внешнюю отправку до его завершения.
+> В текущем checkpoint готовы схема PostgreSQL, REST contract профиля, одноразовые verification tokens, настройки окружения для Resend и отправка **product notifications** после commit in-app уведомления. Доставка строго блокируется, пока адрес не подтверждён или пользователь не отключил email-уведомления. Отправка **verification email** пока намеренно не включена: для неё требуется отдельный transaction-safe flow, который не хранит raw token и не отправляет ссылку до успешной фиксации token hash в PostgreSQL.
 
 ## 1. Что появилось в базе данных
 
@@ -87,9 +87,11 @@ curl --fail-with-body -X POST "$FORMA_URL/api/v1/workspaces/profile/email-verifi
   -H "Idempotency-Key: $(uuidgen)"
 ```
 
-В текущей версии API вернёт `verification_queued`, создаст одноразовый token hash со сроком действия 24 часа и подготовит основу для следующего шага — внешней отправки сообщения. Raw token намеренно не возвращается API и не хранится в PostgreSQL.
+В текущей версии API вернёт `verification_queued` и создаст одноразовый token hash со сроком действия 24 часа. Raw token намеренно не возвращается API и не хранится в PostgreSQL.
 
-Когда Resend adapter будет подключён, письмо будет содержать verification link/token. Подтверждение выполняется запросом:
+> **Ограничение текущей версии.** Verification email ещё не отправляется через Resend, поэтому production-подтверждение адреса нельзя завершить только этим API. Не отмечайте профиль как verified вручную и не обходите delivery gate. Следующей отдельной работой будет безопасный verification mail flow через transactional outbox либо одноразовый signed confirmation link.
+
+Когда transaction-safe verification mail flow будет подключён, письмо будет содержать verification link/token. Подтверждение выполняется запросом:
 
 ```bash
 curl --fail-with-body -X POST "$FORMA_URL/api/v1/workspaces/profile/email-verification/confirm" \
@@ -126,7 +128,16 @@ docker compose --env-file .env -f deploy/docker-compose.production.yml \
 | Не хранить raw verification token | Утечка базы не должна позволять подтвердить email. |
 | Не использовать JWT claim как единственный email source | Внешний issuer может поменять claim или прекратить его выдачу. |
 | Хранить каждую provider attempt отдельно | Можно диагностировать ошибки и не смешивать in-app с email delivery. |
+| Запускать product email только после commit in-app уведомления | Ошибка Resend не меняет receipt idempotency и не переводит RabbitMQ event в DLQ. |
 
-## 7. Текущая готовность и следующие действия
+## 7. Product notifications: что отправляется сейчас
 
-Профиль, verified-email schema, токены подтверждения и API готовы. До production email delivery ещё необходимо: реализовать Resend HTTP adapter; отправлять verification message с raw token; создавать `EmailDeliveryAttempt` для всех внешних отправок; и добавить integration tests для success/error/opt-out/unverified scenarios. Эти шаги уже зафиксированы в `todo.md` и `CHANGELOG_AI.md`.
+После успешного commit in-app уведомления `notification_worker` запускает detached delivery. Он создаёт `EmailDeliveryAttempt` только для delivery attempts, прошедших profile gate. В таблице сохраняются provider result: `delivered` с ID Resend либо `failed` с причиной ошибки. Состояния `skipped_missing_profile`, `skipped_unverified` и `skipped_opt_out` являются нормальным запретом на внешнюю отправку и не меняют статус in-app уведомления.
+
+Пользователю отправляется русскоязычный шаблон для AI proposal/approval, создания или обновления задач и календарных блоков. Для прочих доменных событий применяется нейтральное сообщение без сериализации payload. В содержимое не попадают raw JSON события, токены или секреты.
+
+## 8. Текущая готовность и следующие действия
+
+Готовы профиль, verified-email schema, notification preferences, Resend HTTP adapter, `EmailDeliveryAttempt`, active notification delivery wiring и mocked integration coverage для `delivered`, `failed`, `skipped_missing_profile`, `skipped_unverified` и `skipped_opt_out`.
+
+До полностью end-to-end verified-email flow остаётся один самостоятельный этап: отправка verification message через transaction-safe provider/outbox flow без хранения raw token в PostgreSQL. Он остаётся открытым в `todo.md` и `CHANGELOG_AI.md`. До его завершения deployment можно использовать для in-app уведомлений и для внешней доставки только уже подтверждённым профилям, созданным через будущий безопасный verification flow.

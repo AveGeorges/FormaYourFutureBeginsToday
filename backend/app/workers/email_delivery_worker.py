@@ -9,6 +9,62 @@ from app.modules.notifications.infrastructure.models import EmailDeliveryAttempt
 from app.modules.notifications.infrastructure.resend import ResendEmailProvider
 
 
+def _notification_email_content(notification: Notification) -> tuple[str, str]:
+    """Return user-facing Russian email copy without serializing raw event payloads."""
+    templates = {
+        "AIPlanProposed": (
+            "Forma: предложение AI готово",
+            "AI подготовил предложение плана. Откройте Forma, просмотрите изменения и "
+            "примите решение: изменения никогда не применяются автоматически.",
+        ),
+        "AIPlanApproved": (
+            "Forma: предложение AI применено",
+            "Подтверждённое вами предложение AI применено к вашему пространству Forma.",
+        ),
+        "TaskCreated": (
+            "Forma: задача добавлена",
+            "В вашем пространстве Forma появилась новая задача. При необходимости назначьте ей "
+            "срок, приоритет и время в календаре.",
+        ),
+        "TaskStatusUpdated": (
+            "Forma: статус задачи изменён",
+            "Статус задачи обновлён. Откройте Forma, чтобы проверить следующий шаг.",
+        ),
+        "TaskDueSoon": (
+            "Forma: срок задачи приближается",
+            "Срок одной из ваших задач скоро наступит. Откройте Forma, чтобы уточнить "
+            "следующее действие или перенести время в календаре.",
+        ),
+        "TaskReminder": (
+            "Forma: напоминание о задаче",
+            "Пора вернуться к запланированной задаче. Откройте Forma, чтобы продолжить работу "
+            "или скорректировать план.",
+        ),
+        "CalendarEventReminder": (
+            "Forma: напоминание о календарном блоке",
+            "Скоро начнётся запланированный блок времени. Откройте Forma, чтобы проверить "
+            "контекст и подготовиться к работе.",
+        ),
+        "CalendarEventScheduled": (
+            "Forma: время в календаре запланировано",
+            "Для вашего плана добавлен календарный блок. Откройте Forma, чтобы сверить время и "
+            "приоритет.",
+        ),
+        "CalendarEventRescheduled": (
+            "Forma: календарный блок перенесён",
+            "Время календарного блока изменилось. Откройте Forma, чтобы подтвердить новый план.",
+        ),
+    }
+    return templates.get(
+        notification.notification_type,
+        (
+            "Forma: новое обновление",
+            "В вашем пространстве Forma появилось новое обновление. Откройте приложение, "
+            "чтобы посмотреть подробности.",
+        ),
+    )
+
+
 async def deliver_notification_email(notification_id: UUID) -> str:
     """Deliver one in-app notification externally when the profile permits it.
 
@@ -37,11 +93,13 @@ async def deliver_notification_email(notification_id: UUID) -> str:
         session.add(attempt)
         await session.flush()
 
+        subject, text = _notification_email_content(notification)
+
         try:
             provider_message_id = await ResendEmailProvider().send(
                 recipient=profile.email,
-                subject=f"Forma: {notification.notification_type}",
-                text=str(notification.payload),
+                subject=subject,
+                text=text,
             )
         except DomainError as exc:
             attempt.status = "failed"

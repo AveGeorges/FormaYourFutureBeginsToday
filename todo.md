@@ -34,7 +34,7 @@
 - [x] Расширить audit trail на ключевые mutating commands workspaces, planning, tasks, calendar, time и AI approval.
 - [ ] Вынести cross-context ORM checks из FastAPI routers в application ports, чтобы bounded contexts не импортировали ORM-модели друг друга.
 - [ ] Реализовать один внешний CalendarProvider OAuth adapter, encrypted token storage и import flow через ExternalEventLink.
-- [ ] Подключить базовую email delivery adapter и delivery attempts для deadline/reminder/AI approval notifications.
+- [x] Подключить базовую email delivery adapter и delivery attempts для deadline/reminder/AI approval notifications.
 - [x] Добавить retry/backoff и dead-letter queue для RabbitMQ consumers с тестами повторной доставки.
 - [ ] Довести календарный client drill-down до Year → Quarter → Month → Week → Day с breadcrumb и Back через REST/BFF data.
 - [ ] Завершить Google Calendar OAuth callback/token exchange и encrypted token storage перед production-включением OAuth runbook.
@@ -43,12 +43,20 @@
 - [x] Добавить integration/e2e тесты `runner.dispatch_event` для notification, calendar link queueing, duplicate delivery и failure paths.
 - [ ] Перевести весь активный пользовательский интерфейс Forma на русский язык, включая onboarding, dashboard, календарь, формы, AI и сообщения состояний.
 - [ ] Завершить Google Calendar OAuth callback/token exchange, encrypted token storage, provider adapter и worker sync flow с настройкой только через переменные окружения.
-- [ ] Завершить email delivery adapter с конфигурируемым provider API key, delivery attempts и production runbook без хранения секретов в репозитории.
+- [x] Завершить email delivery adapter с конфигурируемым provider API key, delivery attempts и production runbook без хранения секретов в репозитории.
 - [ ] Подготовить исчерпывающий русскоязычный статус backend/frontend, deployment guide и integration setup guide для самостоятельного self-hosted запуска.
 - [ ] После каждого milestone обновлять CHANGELOG_AI.md с выполненными работами, проверками, рисками и следующими шагами.
-- [ ] Добавить self-hosted UserProfile с verified email как источник адреса для внешней email-доставки.
-- [ ] Добавить notification preferences и server-side проверки, запрещающие email delivery до подтверждения адреса.
-- [ ] Подготовить подробную русскоязычную инструкцию настройки профиля, подтверждения email, Resend и self-hosted deployment.
+- [x] Добавить self-hosted UserProfile с verified email как источник адреса для внешней email-доставки.
+- [x] Добавить notification preferences и server-side проверки, запрещающие email delivery до подтверждения адреса.
+- [x] Подготовить подробную русскоязычную инструкцию настройки профиля, подтверждения email, Resend и self-hosted deployment.
+- [x] Подключить email delivery worker к active notification events после успешного commit in-app notification, не меняя receipt idempotency и RabbitMQ ACK semantics.
+- [x] Добавить mocked integration tests всех email delivery states: delivered, failed, skipped_missing_profile, skipped_unverified и skipped_opt_out.
+- [x] Заменить сырой `str(notification.payload)` на user-facing email templates для deadline, reminder и AI approval notifications.
+- [x] Добавить отдельные русскоязычные email templates и tests для deadline/reminder event types, включая `TaskDueSoon`.
+- [x] Добавить отдельные provider-payload tests для `TaskReminder` и `CalendarEventReminder` templates.
+- [x] Актуализировать self-hosted email profile runbook и технический статус после подключения active notification email wiring, сохранив явное описание оставшихся ограничений.
+- [x] Документированно отложить end-to-end отправку verification email через provider, не создавая ложного impression полного email-confirmation flow.
+- [ ] Реализовать transaction-safe verification email flow через outbox или signed confirmation link без хранения raw token в PostgreSQL.
 
 - [x] Синхронизировать проект с подключённым GitHub-репозиторием и сохранить архитектурные документы в корне проекта.
 - [x] Зафиксировать название Forma, позиционирование и девиз в метаданных приложения и стартовом интерфейсе.

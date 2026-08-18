@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
@@ -9,11 +10,16 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 import app.models_registry  # noqa: F401
 from app.core.database import Base
+from app.core.errors import DomainError
 from app.events.contracts import EventEnvelope
-from app.modules.identity.infrastructure.models import Workspace
-from app.modules.notifications.infrastructure.models import Notification, WorkerReceipt
+from app.modules.identity.infrastructure.models import UserProfile, Workspace
+from app.modules.notifications.infrastructure.models import (
+    EmailDeliveryAttempt,
+    Notification,
+    WorkerReceipt,
+)
 from app.modules.scheduling.infrastructure.models import Calendar, CalendarEvent, ExternalEventLink
-from app.workers import calendar_sync_worker, notification_worker, runner
+from app.workers import calendar_sync_worker, email_delivery_worker, notification_worker, runner
 
 
 class FakeIncomingMessage:
@@ -32,6 +38,8 @@ async def test_worker_handlers_persist_once_and_deduplicate_by_consumer(
     monkeypatch.setattr(notification_worker, "SessionLocal", session_factory)
     monkeypatch.setattr(calendar_sync_worker, "SessionLocal", session_factory)
     monkeypatch.setattr(runner, "SessionLocal", session_factory)
+    deliver_email = AsyncMock(return_value="skipped_missing_profile")
+    monkeypatch.setattr(notification_worker, "deliver_notification_email", deliver_email)
 
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
@@ -96,6 +104,8 @@ async def test_worker_handlers_persist_once_and_deduplicate_by_consumer(
 
     assert await notification_worker.handle_notification_event(event, owner_id) is True
     assert await notification_worker.handle_notification_event(event, owner_id) is False
+    await asyncio.sleep(0)
+    deliver_email.assert_awaited_once()
     assert await calendar_sync_worker.mark_external_event_for_sync(event, link_id) is True
     assert await calendar_sync_worker.mark_external_event_for_sync(event, link_id) is False
 
@@ -138,6 +148,161 @@ async def test_worker_handlers_persist_once_and_deduplicate_by_consumer(
     assert receipt_count == 4
 
     await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_email_delivery_worker_persists_all_profile_gated_delivery_states(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_async_engine("sqlite+aiosqlite://")
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    monkeypatch.setattr(email_delivery_worker, "SessionLocal", session_factory)
+
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+    workspace_id = uuid4()
+    recipient_id = uuid4()
+    notification_id = uuid4()
+    async with session_factory() as session:
+        session.add(Workspace(id=workspace_id, owner_id=recipient_id, name="Email test space"))
+        session.add(
+            Notification(
+                id=notification_id,
+                workspace_id=workspace_id,
+                user_id=recipient_id,
+                notification_type="TaskDueSoon",
+                payload={"task_id": "task-1"},
+                status="delivered_in_app",
+            )
+        )
+        await session.commit()
+
+    assert (
+        await email_delivery_worker.deliver_notification_email(notification_id)
+        == "skipped_missing_profile"
+    )
+
+    async with session_factory() as session:
+        session.add(
+            UserProfile(
+                user_id=recipient_id,
+                email="person@example.test",
+                email_verified_at=None,
+                email_notifications_enabled=True,
+            )
+        )
+        await session.commit()
+
+    assert (
+        await email_delivery_worker.deliver_notification_email(notification_id)
+        == "skipped_unverified"
+    )
+
+    async with session_factory() as session:
+        profile = await session.get(UserProfile, recipient_id)
+        assert profile is not None
+        profile.email_verified_at = datetime.now(UTC)
+        profile.email_notifications_enabled = False
+        await session.commit()
+
+    assert (
+        await email_delivery_worker.deliver_notification_email(notification_id) == "skipped_opt_out"
+    )
+
+    send = AsyncMock(return_value="resend-message-1")
+    monkeypatch.setattr(email_delivery_worker.ResendEmailProvider, "send", send)
+    async with session_factory() as session:
+        profile = await session.get(UserProfile, recipient_id)
+        assert profile is not None
+        profile.email_notifications_enabled = True
+        await session.commit()
+
+    assert await email_delivery_worker.deliver_notification_email(notification_id) == "delivered"
+    send.assert_awaited_once()
+    assert send.await_args is not None
+    assert send.await_args.kwargs == {
+        "recipient": "person@example.test",
+        "subject": "Forma: срок задачи приближается",
+        "text": "Срок одной из ваших задач скоро наступит. Откройте Forma, чтобы уточнить "
+        "следующее действие или перенести время в календаре.",
+    }
+
+    failed_notification_id = uuid4()
+    async with session_factory() as session:
+        session.add(
+            Notification(
+                id=failed_notification_id,
+                workspace_id=workspace_id,
+                user_id=recipient_id,
+                notification_type="AiProposalReady",
+                payload={"proposal_id": "proposal-1"},
+                status="delivered_in_app",
+            )
+        )
+        await session.commit()
+
+    send.side_effect = DomainError("EMAIL_DELIVERY_FAILED", "Resend is unavailable")
+    assert (
+        await email_delivery_worker.deliver_notification_email(failed_notification_id) == "failed"
+    )
+
+    async with session_factory() as session:
+        attempts = list(
+            (
+                await session.scalars(
+                    select(EmailDeliveryAttempt).order_by(EmailDeliveryAttempt.created_at)
+                )
+            ).all()
+        )
+
+    assert [(attempt.notification_id, attempt.status) for attempt in attempts] == [
+        (notification_id, "delivered"),
+        (failed_notification_id, "failed"),
+    ]
+    assert attempts[0].provider_message_id == "resend-message-1"
+    assert attempts[1].error_message == "Resend is unavailable"
+
+    await engine.dispose()
+
+
+@pytest.mark.parametrize(
+    ("event_type", "expected_subject", "expected_text"),
+    [
+        (
+            "TaskReminder",
+            "Forma: напоминание о задаче",
+            "Пора вернуться к запланированной задаче. Откройте Forma, чтобы продолжить работу "
+            "или скорректировать план.",
+        ),
+        (
+            "CalendarEventReminder",
+            "Forma: напоминание о календарном блоке",
+            "Скоро начнётся запланированный блок времени. Откройте Forma, чтобы проверить "
+            "контекст и подготовиться к работе.",
+        ),
+    ],
+)
+def test_reminder_email_templates_are_localized_and_do_not_expose_payload(
+    event_type: str,
+    expected_subject: str,
+    expected_text: str,
+) -> None:
+    notification = Notification(
+        id=uuid4(),
+        workspace_id=uuid4(),
+        user_id=uuid4(),
+        notification_type=event_type,
+        payload={"private_value": "must-not-appear"},
+        status="delivered_in_app",
+    )
+
+    subject, text = email_delivery_worker._notification_email_content(notification)
+
+    assert subject == expected_subject
+    assert text == expected_text
+    assert "must-not-appear" not in subject
+    assert "must-not-appear" not in text
 
 
 @pytest.mark.asyncio
