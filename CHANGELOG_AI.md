@@ -939,3 +939,39 @@ fixed_ai_command_set:
     - complete external OAuth/provider integrations before enabling them
   rollback_notes: restore the prior checkpoint if legacy scaffold access is required for comparison.
 ```
+
+## CHANGE_HISTORY_WORKER_CONSUMER_TESTS
+
+```yaml
+- change_id: CHG-20260818-006
+  created_at: 2026-08-18T00:00:00Z
+  agent: Manus
+  iteration: 1
+  milestone: worker_consumer_quality
+  status: partial
+  change_type: test
+  summary: added_worker_dispatcher_success_duplicate_and_failure_path_coverage
+  files_changed:
+    - backend/app/workers/runner.py
+    - backend/tests/test_workers.py
+    - todo.md
+  contracts_changed:
+    api: []
+    events:
+      - consumer_failure_rejects_message_without_requeue
+    database: []
+    ai_tools: []
+  commands_run:
+    - command: ruff check app tests scripts && mypy app && pytest -q
+      result: passed
+      notes: 7 Python tests passed
+  migrations:
+    created: false
+    names: []
+  breaking_change: false
+  risks:
+    - actual provider-backed calendar synchronization remains unimplemented.
+  follow_up:
+    - implement external CalendarProvider OAuth callback/token encryption and sync adapter
+  rollback_notes: revert process_message seam and worker tests together if consumer interface changes.
+```
